@@ -40,7 +40,7 @@ uint64_t ntohll(uint64_t netll)
 void dump_hex(void *buff, size_t size)
 {
     for(int i=0; i<size; ++i) {
-        printf("%x ", ((unsigned char *) buff)[i]);
+        printf("%02x ", ((unsigned char *) buff)[i]);
     }
     printf("\n");
 }
@@ -81,10 +81,18 @@ void serialized_buffer_destroy(serialized_buffer *buf)
     free(buf->data);
 }
 
-void serealize_long(serialized_buffer *buf, int val)
+void serealize_long(serialized_buffer *buf, uint32_t val)
 {
-    memcpy((int *) buf->next, (uint32_t)htonl((uint32_t)val), sizeof(int));
-    buf->next += sizeof(int);
+    val = htonl(val);
+    memcpy((uint32_t *) buf->next, &val, sizeof(uint32_t));
+    buf->next += sizeof(uint32_t);
+}
+
+void serealize_long_long(serialized_buffer *buf, uint64_t val)
+{
+    val = htonll(val);
+    memcpy((uint64_t *) buf->next, &val, sizeof(uint64_t));
+    buf->next += sizeof(uint64_t);
 }
 
 int send_version_cmd(int sock)
@@ -98,15 +106,16 @@ int send_version_cmd(int sock)
     //cmd.addr_recv.ip_addr = //TODO;
     */
     
-    serialized_buffer *buf;
-    serialized_buffer_init(buf, init);
+    serialized_buffer buf;
+    serialized_buffer_init(&buf, 1000);
     
-    serealize_long(buf, PROTO_VERSION);
+    serealize_long(&buf, PROTO_VERSION);
+    serealize_long_long(&buf, 1024);
+    serealize_long_long(&buf, time(NULL));
     
     // TODO send message
-    
-    //dump_hex(&cmd, sizeof(cmd));
-    serialized_buffer_destroy(buf);
+    dump_hex(buf.data, 1000);
+    serialized_buffer_destroy(&buf);
     return 0;
 }
 
