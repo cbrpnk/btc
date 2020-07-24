@@ -7,33 +7,24 @@
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
+#include <openssl/sha.h>
 
 // TODO Implement dns based seeding
 // Testnet seed dns
 // seed.tbtc.petertodd.org
 // testnet-seed.bitcoin.jonasschnelli.ch
 
-#define PROTO_VERSION 31402
-#define REMOTE_NODE_ADDR "165.22.49.1"
+#define PROTO_VERSION 60002
+#define LOCAL_NODE_ADDR "0.0.0.0"
+#define LOCAL_NODE_PORT 18333
+#define REMOTE_NODE_ADDR "95.216.36.213"
 #define REMOTE_NODE_PORT 18333
 #define SUPPORTED_SERVICES 1 // NODE_NETWORK
 
-
-// 64 bit variants of endian convertion functions
-uint64_t htonll(uint64_t hostll)
+uint64_t generate_nonce()
 {
-    unsigned char *p = (unsigned char*) &hostll;
-    uint64_t out = 0;
-    for(int i=0; i<8; ++i) {
-        out |= ((uint64_t) p[7-i]) << (i*8);
-    }
-    
-    return out;
-}
-
-uint64_t ntohll(uint64_t netll)
-{
-    return htonll(netll);
+    // Concatenate 2 32bit rand(), assumes rand() returns a 32 bit number
+    return ((uint64_t) rand()) | (((uint64_t) rand()) << 32);
 }
 
 // Debug function that prints an hex dump of a buffer
@@ -41,91 +32,132 @@ void dump_hex(void *buff, size_t size)
 {
     for(int i=0; i<size; ++i) {
         printf("%02x ", ((unsigned char *) buff)[i]);
+        //printf("%c ", ((unsigned char *) buff)[i]);
     }
     printf("\n");
 }
 
-// Commands
-struct net_addr {
-    uint64_t services;
-    unsigned char ip_addr[16]; // If IPv4, 10 bytes of zeros, 2 FF bytes followed by 4 bytes of the address
-    uint16_t port;
-};
-
-struct version_cmd {
-    int32_t version;
-    uint64_t services;
-    int64_t timestamp;
-    struct net_addr addr_recv;
-    struct net_addr addr_from;
-    uint64_t nonce;
-    char user_agent; // TODO For now 0 but should be a var_str
-    int32_t start_height;
-};
-
-typedef struct serialized_buffer {
-    unsigned char *data;
-    unsigned char *next;
-    size_t size;
-} serialized_buffer;
-
-void serialized_buffer_init(serialized_buffer *buf, size_t size)
+// Serialize builtin types
+void serialize_byte(unsigned char **buf, unsigned char val)
 {
-    buf->data = malloc(size);
-    buf->next = buf->data;
-    buf->size = size;
+    **buf = val;
+    (*buf)++;
 }
 
-void serialized_buffer_destroy(serialized_buffer *buf)
+void serialize_short(unsigned char **buf, uint16_t val)
 {
-    free(buf->data);
+    memcpy((uint16_t *) *buf, &val, sizeof(uint16_t));
+    *buf += sizeof(uint16_t);
 }
 
-void serealize_long(serialized_buffer *buf, uint32_t val)
+void serialize_long(unsigned char **buf, uint32_t val)
 {
-    val = htonl(val);
-    memcpy((uint32_t *) buf->next, &val, sizeof(uint32_t));
-    buf->next += sizeof(uint32_t);
+    memcpy((uint32_t *) *buf, &val, sizeof(uint32_t));
+    *buf += sizeof(uint32_t);
 }
 
-void serealize_long_long(serialized_buffer *buf, uint64_t val)
+void serialize_long_long(unsigned char **buf, uint64_t val)
 {
-    val = htonll(val);
-    memcpy((uint64_t *) buf->next, &val, sizeof(uint64_t));
-    buf->next += sizeof(uint64_t);
+    memcpy((uint64_t *) *buf, &val, sizeof(uint64_t));
+    *buf += sizeof(uint64_t);
+}
+
+// Bitcoin special field serialization
+void serialize_ipv4(unsigned char **buf, const char* ipstr)
+{
+    // 10 zero bytes
+    for(int i=0; i<10; ++i) {
+        serialize_byte(buf, 0x00);
+    }
+    
+    // 2 ff bytes
+    for(int i=0; i<2; ++i) {
+        serialize_byte(buf, 0xff);
+    }
+    
+    // 4 IPv4 byte Big Endian
+    //unsigned char addr[4];
+    //inet_pton(AF_INET, ipstr, addr);
+    for(int i=3; i>=0; --i) {
+        //serialize_byte(buf, addr[i]);
+        serialize_byte(buf, 0x00);
+    }
+}
+
+void serialize_port(unsigned char **buf, uint16_t port)
+{
+    serialize_short(buf, htons(port));
+}
+
+void serialize_header(unsigned char **header, unsigned char *payload, char *cmd, size_t payload_len)
+{
+    printf("Serialize header\n");
+    // Magic number for testnet
+    serialize_byte(header, 0x0b);
+    serialize_byte(header, 0x11);
+    serialize_byte(header, 0x09);
+    serialize_byte(header, 0x07);
+    // TODO Test if cmd length is smaller than 12
+    // Command
+    for(int i=0; i<strlen(cmd); ++i) {
+        serialize_byte(header, cmd[i]);
+    }
+    // Command padding
+    *header += 12-strlen(cmd);
+    // Payload len
+    serialize_long(header, payload_len);
+    // Checksum
+    unsigned char *checksum = SHA256(payload, payload_len, 0);
+    checksum = SHA256(checksum, strlen(checksum), 0);
+    serialize_long(header, *((uint32_t *) checksum));
 }
 
 int send_version_cmd(int sock)
 {
-    /*
-    struct version_cmd cmd;
-    cmd.version = PROTO_VERSION;
-    cmd.services = 1024;
-    cmd.timestamp = time(NULL);
-    cmd.addr_recv.services = SUPPORTED_SERVICES;
-    //cmd.addr_recv.ip_addr = //TODO;
-    */
+    // The payload length can change based on the size of the user-agent field
+    const unsigned int header_len = 24;
+    const unsigned int payload_len = 85;
+    const unsigned int message_len = header_len + payload_len;
+    unsigned char *message = calloc(message_len, 1);
     
-    serialized_buffer buf;
-    serialized_buffer_init(&buf, 1000);
+    // The header and payload pointers will be advanced accordingly in the serialize functions
+    unsigned char *header = message;
+    unsigned char *payload = message + header_len;
     
-    serealize_long(&buf, PROTO_VERSION);
-    serealize_long_long(&buf, 1024);
-    serealize_long_long(&buf, time(NULL));
+    // Version
+    serialize_long(&payload, PROTO_VERSION);
+    // Services
+    serialize_long_long(&payload, SUPPORTED_SERVICES);
+    // Timestamp
+    serialize_long_long(&payload, (uint64_t) time(NULL));
+    // Destination address
+    serialize_long_long(&payload, SUPPORTED_SERVICES);
+    serialize_ipv4(&payload, REMOTE_NODE_ADDR);
+    serialize_port(&payload, 0);
+    // Source address
+    serialize_long_long(&payload, SUPPORTED_SERVICES);
+    serialize_ipv4(&payload, LOCAL_NODE_ADDR);
+    serialize_port(&payload, 0);
+    // Random nonce
+    serialize_long_long(&payload, generate_nonce());
+    // User agent
+    serialize_byte(&payload, 0x00);
+    // Start height, last block received by us
+    serialize_long(&payload, 0);
     
-    // TODO send message
-    dump_hex(buf.data, 1000);
-    serialized_buffer_destroy(&buf);
+    // Header
+    serialize_header(&header, payload, "version", payload_len);
+    
+    dump_hex(message, message_len);
+    send(sock, message, message_len, 0);
+    free(message);
     return 0;
 }
 
 int main(int argc, char **argv)
 {
     int sock = 0;
-    send_version_cmd(sock);
     
-
-    /*
     if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         printf("Socket creation error\n");
         return -1;
@@ -141,7 +173,13 @@ int main(int argc, char **argv)
         return -1;
     }
     
+    send_version_cmd(sock);
+    printf("RECV-------------------------------------------\n\n");
+    unsigned char message_buffer[2000] = {0};
+    int len = recv(sock, message_buffer, 2000, 0);
+    printf("%d\n", len);
+    dump_hex(message_buffer, len);
+    
     close(sock);
-    */
     return 0;
 }
