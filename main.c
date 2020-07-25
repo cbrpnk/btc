@@ -20,7 +20,8 @@
 #define LOCAL_NODE_ADDR "0.0.0.0"
 #define LOCAL_NODE_PORT 18333
 //#define REMOTE_NODE_ADDR "95.216.36.213" // Testnet
-#define REMOTE_NODE_ADDR "43.245.223.150" // Testnet
+//#define REMOTE_NODE_ADDR "43.245.223.150" // Testnet
+#define REMOTE_NODE_ADDR "50.2.13.165" // Testnet
 //#define REMOTE_NODE_ADDR "127.0.0.1" // Testnet
 //#define REMOTE_NODE_ADDR "202.187.149.107"
 #define REMOTE_NODE_PORT 18333
@@ -115,7 +116,7 @@ uint32_t gen_checksum(unsigned char *buf, size_t len)
     return *((uint32_t *) checksum);
 }
 
-void serialize_header(unsigned char **header, unsigned char *payload, char *cmd, size_t payload_len)
+void serialize_header(unsigned char **header, char *cmd, unsigned char *payload, size_t payload_len)
 {
     printf("Serialize header\n");
     // Magic number for testnet
@@ -136,42 +137,43 @@ void serialize_header(unsigned char **header, unsigned char *payload, char *cmd,
 int send_version_cmd(int sock)
 {
     // The payload length can change based on the size of the user-agent field
+    const char *user_agent = "/test:0.0.1/";
     const unsigned int header_len = 24;
-    const unsigned int payload_len = 102;
+    const unsigned int payload_len = 86 + strlen(user_agent);
     const unsigned int message_len = header_len + payload_len;
     unsigned char *message = calloc(message_len, 1);
     
     // The header and payload pointers will be advanced accordingly in the serialize functions
     unsigned char *header = message;
-    unsigned char *payload = message + header_len;
+    unsigned char *payload_head = message + header_len;
+    unsigned char *payload_tail = payload_head;
     
     // Version
-    serialize_long(&payload, PROTO_VERSION);
+    serialize_long(&payload_tail, PROTO_VERSION);
     // Services
-    serialize_long_long(&payload, 1);
+    serialize_long_long(&payload_tail, 1);
     // Timestamp
-    serialize_long_long(&payload, (uint64_t) time(NULL));
+    serialize_long_long(&payload_tail, (uint64_t) time(NULL));
     // Destination address
-    serialize_long_long(&payload, 1);
-    serialize_ipv4(&payload, REMOTE_NODE_ADDR);
-    serialize_port(&payload, REMOTE_NODE_PORT);
+    serialize_long_long(&payload_tail, 1);
+    serialize_ipv4(&payload_tail, REMOTE_NODE_ADDR);
+    serialize_port(&payload_tail, REMOTE_NODE_PORT);
     // Source address
-    serialize_long_long(&payload, 1);
-    serialize_ipv4(&payload, "0.0.0.0");
-    serialize_port(&payload, 0);
+    serialize_long_long(&payload_tail, 1);
+    serialize_ipv4(&payload_tail, "0.0.0.0");
+    serialize_port(&payload_tail, 0);
     // Random nonce
-    serialize_long_long(&payload, gen_nonce());
+    serialize_long_long(&payload_tail, gen_nonce());
     // User agent
-    const char *user_agent = "/Satoshi:0.19.1/";
-    serialize_byte(&payload, strlen(user_agent));
-    serialize_string(&payload, user_agent);
+    serialize_byte(&payload_tail, strlen(user_agent));
+    serialize_string(&payload_tail, user_agent);
     // Start height, last block received by us
-    serialize_long(&payload, 0);
+    serialize_long(&payload_tail, 0);
     // Relay
-    serialize_byte(&payload, 1);
+    serialize_byte(&payload_tail, 1);
     
     // Header
-    serialize_header(&header, payload, "version", payload_len);
+    serialize_header(&header, "version", payload_head, payload_len);
     
     dump_hex(message, message_len);
     send(sock, message, message_len, 0);
