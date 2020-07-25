@@ -14,15 +14,21 @@
 // seed.tbtc.petertodd.org
 // testnet-seed.bitcoin.jonasschnelli.ch
 
-#define PROTO_VERSION 60002
+//#define MAGIC_NUMBER 0xd9b4bef9 // Main net
+#define MAGIC_NUMBER 0x0709110b// Testnet 3
+#define PROTO_VERSION 70015
 #define LOCAL_NODE_ADDR "0.0.0.0"
 #define LOCAL_NODE_PORT 18333
-#define REMOTE_NODE_ADDR "95.216.36.213"
+//#define REMOTE_NODE_ADDR "95.216.36.213" // Testnet
+#define REMOTE_NODE_ADDR "43.245.223.150" // Testnet
+//#define REMOTE_NODE_ADDR "127.0.0.1" // Testnet
+//#define REMOTE_NODE_ADDR "202.187.149.107"
 #define REMOTE_NODE_PORT 18333
-#define SUPPORTED_SERVICES 1 // NODE_NETWORK
+#define SUPPORTED_SERVICES 0x0408
 
-uint64_t generate_nonce()
+uint64_t gen_nonce()
 {
+    srand(time(NULL));
     // Concatenate 2 32bit rand(), assumes rand() returns a 32 bit number
     return ((uint64_t) rand()) | (((uint64_t) rand()) << 32);
 }
@@ -32,7 +38,6 @@ void dump_hex(void *buff, size_t size)
 {
     for(int i=0; i<size; ++i) {
         printf("%02x ", ((unsigned char *) buff)[i]);
-        //printf("%c ", ((unsigned char *) buff)[i]);
     }
     printf("\n");
 }
@@ -62,6 +67,18 @@ void serialize_long_long(unsigned char **buf, uint64_t val)
     *buf += sizeof(uint64_t);
 }
 
+void serialize_string(unsigned char **buf, const unsigned char *str)
+{
+    for(int i=0; i<strlen(str); ++i) {
+        serialize_byte(buf, str[i]);
+    }
+}
+
+void serialize_port(unsigned char **buf, uint16_t port)
+{
+    serialize_short(buf, htons(port));
+}
+
 // Bitcoin special field serialization
 void serialize_ipv4(unsigned char **buf, const char* ipstr)
 {
@@ -75,28 +92,34 @@ void serialize_ipv4(unsigned char **buf, const char* ipstr)
         serialize_byte(buf, 0xff);
     }
     
-    // 4 IPv4 byte Big Endian
-    //unsigned char addr[4];
-    //inet_pton(AF_INET, ipstr, addr);
-    for(int i=3; i>=0; --i) {
-        //serialize_byte(buf, addr[i]);
-        serialize_byte(buf, 0x00);
+    // 4 IPv4 bytes
+    unsigned char addr[4];
+    inet_pton(AF_INET, ipstr, addr);
+    for(int i=0; i<4; ++i) {
+        serialize_byte(buf, addr[i]);
+        //serialize_byte(buf, 0x00);
     }
 }
 
-void serialize_port(unsigned char **buf, uint16_t port)
+uint32_t gen_checksum(unsigned char *buf, size_t len)
 {
-    serialize_short(buf, htons(port));
+    // The first 4 byte of a double sha256
+    unsigned char checksum[SHA256_DIGEST_LENGTH];
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, buf, len);
+    SHA256_Final(checksum, &ctx);
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, checksum, SHA256_DIGEST_LENGTH);
+    SHA256_Final(checksum, &ctx);
+    return *((uint32_t *) checksum);
 }
 
 void serialize_header(unsigned char **header, unsigned char *payload, char *cmd, size_t payload_len)
 {
     printf("Serialize header\n");
     // Magic number for testnet
-    serialize_byte(header, 0x0b);
-    serialize_byte(header, 0x11);
-    serialize_byte(header, 0x09);
-    serialize_byte(header, 0x07);
+    serialize_long(header, MAGIC_NUMBER);
     // TODO Test if cmd length is smaller than 12
     // Command
     for(int i=0; i<strlen(cmd); ++i) {
@@ -107,16 +130,14 @@ void serialize_header(unsigned char **header, unsigned char *payload, char *cmd,
     // Payload len
     serialize_long(header, payload_len);
     // Checksum
-    unsigned char *checksum = SHA256(payload, payload_len, 0);
-    checksum = SHA256(checksum, strlen(checksum), 0);
-    serialize_long(header, *((uint32_t *) checksum));
+    serialize_long(header, gen_checksum(payload, payload_len));
 }
 
 int send_version_cmd(int sock)
 {
     // The payload length can change based on the size of the user-agent field
     const unsigned int header_len = 24;
-    const unsigned int payload_len = 85;
+    const unsigned int payload_len = 102;
     const unsigned int message_len = header_len + payload_len;
     unsigned char *message = calloc(message_len, 1);
     
@@ -127,23 +148,27 @@ int send_version_cmd(int sock)
     // Version
     serialize_long(&payload, PROTO_VERSION);
     // Services
-    serialize_long_long(&payload, SUPPORTED_SERVICES);
+    serialize_long_long(&payload, 1);
     // Timestamp
     serialize_long_long(&payload, (uint64_t) time(NULL));
     // Destination address
-    serialize_long_long(&payload, SUPPORTED_SERVICES);
+    serialize_long_long(&payload, 1);
     serialize_ipv4(&payload, REMOTE_NODE_ADDR);
-    serialize_port(&payload, 0);
+    serialize_port(&payload, REMOTE_NODE_PORT);
     // Source address
-    serialize_long_long(&payload, SUPPORTED_SERVICES);
-    serialize_ipv4(&payload, LOCAL_NODE_ADDR);
+    serialize_long_long(&payload, 1);
+    serialize_ipv4(&payload, "0.0.0.0");
     serialize_port(&payload, 0);
     // Random nonce
-    serialize_long_long(&payload, generate_nonce());
+    serialize_long_long(&payload, gen_nonce());
     // User agent
-    serialize_byte(&payload, 0x00);
+    const char *user_agent = "/Satoshi:0.19.1/";
+    serialize_byte(&payload, strlen(user_agent));
+    serialize_string(&payload, user_agent);
     // Start height, last block received by us
     serialize_long(&payload, 0);
+    // Relay
+    serialize_byte(&payload, 1);
     
     // Header
     serialize_header(&header, payload, "version", payload_len);
