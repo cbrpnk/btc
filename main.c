@@ -17,11 +17,17 @@
 // testnet-seed.bitcoin.jonasschnelli.ch
 
 typedef struct bc_network {
-    uint32_t protocol_version;
     uint32_t magic_number;
+    uint16_t default_port;
+} bc_network;
+
+typedef struct bc_node {
+    bc_network network;
+    uint32_t protocol_version;
+    char ip[15];
     uint16_t port;
     int socket;
-} bc_network;
+} bc_node;
 
 const uint32_t protocol_version = 70015;
 const char *user_agent = "/test:0.0.1/";
@@ -29,8 +35,6 @@ const size_t message_header_len = 24;
 // Testnet
 const uint32_t testnet_magic_number = 0x0709110b;
 const uint16_t testnet_port = 18333;
-
-#define REMOTE_NODE_ADDR "50.2.13.165" // Testnet
 
 // Debug function that prints an hex dump of a buffer
 void dump_hex(void *buff, size_t size)
@@ -96,10 +100,10 @@ uint32_t gen_checksum(unsigned char *buf, size_t len)
     return *((uint32_t *) checksum);
 }
 
-void serialize_header(bc_network *network, buffer *message, char *cmd)
+void serialize_header(bc_node *node, buffer *message, char *cmd)
 {
     // Magic number for testnet
-    buffer_push_u32(message, network->magic_number);
+    buffer_push_u32(message, node->network.magic_number);
     // TODO Test if cmd length is smaller than 12
     // Command
     for(int i=0; i<strlen(cmd); ++i) {
@@ -114,7 +118,7 @@ void serialize_header(bc_network *network, buffer *message, char *cmd)
     buffer_push_u32(message, gen_checksum(message->data+message_header_len, payload_len));
 }
 
-int send_version_cmd(bc_network *network)
+int send_version_cmd(bc_node *node)
 {
     buffer message;
     buffer_init(&message);
@@ -123,15 +127,15 @@ int send_version_cmd(bc_network *network)
     message.next += message_header_len;
     
     // Version
-    buffer_push_u32(&message, network->protocol_version);
+    buffer_push_u32(&message, node->protocol_version);
     // Services
     buffer_push_u64(&message, 1);
     // Timestamp
     buffer_push_u64(&message, (uint64_t) time(NULL));
     // Destination address
     buffer_push_u64(&message, 1);
-    serialize_ipv4(&message, REMOTE_NODE_ADDR);
-    serialize_port(&message, network->port);
+    serialize_ipv4(&message, node->ip);
+    serialize_port(&message, node->port);
     // Source address
     buffer_push_u64(&message, 1);
     serialize_ipv4(&message, "0.0.0.0");
@@ -148,47 +152,67 @@ int send_version_cmd(bc_network *network)
     
     // Reset write head
     message.next = 0;;
-    serialize_header(network, &message, "version");
+    serialize_header(node, &message, "version");
     
-    send(network->socket, message.data, message.size, 0);
+    send(node->socket, message.data, message.size, 0);
     buffer_destroy(&message);
     return 0;
 }
 
-int main(int argc, char **argv)
+int connect_to_remote(bc_node *remote)
 {
-    bc_network network = {
-        .protocol_version = protocol_version,
-        .magic_number = testnet_magic_number,
-        .port = testnet_port,
-        .socket = 0
-    };
-    
-    if((network.socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    if((remote->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         printf("Socket creation error\n");
         return -1;
     }
     
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(network.port);
-    inet_pton(AF_INET, REMOTE_NODE_ADDR, &server_addr.sin_addr);
+    server_addr.sin_port = htons(remote->port);
+    inet_pton(AF_INET, remote->ip, &server_addr.sin_addr);
     
-    if((connect(network.socket, (struct sockaddr *) &server_addr,
+    if((connect(remote->socket, (struct sockaddr *) &server_addr,
             sizeof(server_addr))) < 0) {
         printf("Connection Failed\n");
         return -1;
     }
     
-    send_version_cmd(&network);
+    return 0;
+}
+
+int disconnect_from_remote(bc_node *remote)
+{
+    close(remote->socket);
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    bc_node remote = {
+        .network = {
+            .magic_number = testnet_magic_number,
+            .default_port = testnet_port,
+        },
+        .protocol_version = protocol_version,
+        .ip = "50.2.13.165",
+        .port = testnet_port,
+        .socket = 0
+    };
+    
+    if(connect_to_remote(&remote) < 0) {
+        return -1;
+    }
+    
+    send_version_cmd(&remote);
+    
     printf("RECV-------------------------------------------\n\n");
     unsigned char message_buffer[2000] = {0};
-    int len = recv(network.socket, message_buffer, 2000, 0);
+    int len = recv(remote.socket, message_buffer, 2000, 0);
     dump_hex(message_buffer, len);
     printf("RECV-------------------------------------------\n\n");
-    len = recv(network.socket, message_buffer, 2000, 0);
+    len = recv(remote.socket, message_buffer, 2000, 0);
     dump_hex(message_buffer, len);
     
-    close(network.socket);
+    disconnect_from_remote(&remote);
     return 0;
 }
