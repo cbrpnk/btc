@@ -15,6 +15,7 @@
 // testnet-seed.bitcoin.jonasschnelli.ch
 
 //#define MAGIC_NUMBER 0xd9b4bef9 // Main net
+#define HEADER_LEN 24
 #define MAGIC_NUMBER 0x0709110b// Testnet 3
 #define PROTO_VERSION 70015
 #define LOCAL_NODE_ADDR "0.0.0.0"
@@ -27,61 +28,99 @@
 #define REMOTE_NODE_PORT 18333
 #define SUPPORTED_SERVICES 0x0408
 
-uint64_t gen_nonce()
-{
-    srand(time(NULL));
-    // Concatenate 2 32bit rand(), assumes rand() returns a 32 bit number
-    return ((uint64_t) rand()) | (((uint64_t) rand()) << 32);
-}
-
 // Debug function that prints an hex dump of a buffer
 void dump_hex(void *buff, size_t size)
 {
+    printf("HEX DUMP of size %d", size);
     for(int i=0; i<size; ++i) {
         printf("%02x ", ((unsigned char *) buff)[i]);
     }
     printf("\n");
 }
 
-// Serialize builtin types
-void serialize_byte(unsigned char **buf, unsigned char val)
+// Buffer serialization
+typedef struct buffer {
+    unsigned char *data;
+    // Index of the next byte to write
+    unsigned int next;
+    size_t size;
+    size_t capacity;
+} buffer;
+
+void buffer_init(buffer *buf)
 {
-    **buf = val;
-    (*buf)++;
+    buf->capacity = 100;
+    buf->data = calloc(buf->capacity, 1);
+    buf->next = 0;
+    buf->size = 0;
 }
 
-void serialize_short(unsigned char **buf, uint16_t val)
+void buffer_destroy(buffer *buf)
 {
-    memcpy((uint16_t *) *buf, &val, sizeof(uint16_t));
-    *buf += sizeof(uint16_t);
+    buf->capacity = 0;
+    free(buf->data);
+    buf->next = 0;
+    buf->size = 0;
 }
 
-void serialize_long(unsigned char **buf, uint32_t val)
-{
-    memcpy((uint32_t *) *buf, &val, sizeof(uint32_t));
-    *buf += sizeof(uint32_t);
+// Make sur there's at least size free bytes in the buffer
+void buffer_require(buffer *buf, size_t size)
+{ 
+    if(((int)(buf->capacity - buf->next - size)) <= 0) {
+        // Double buffer capacity
+        size_t new_capacity = buf->capacity * 2;
+        buf->data = realloc(buf->data, new_capacity);
+        memset(buf->data+buf->capacity, 0, buf->capacity);
+        buf->capacity = new_capacity;
+    }
 }
 
-void serialize_long_long(unsigned char **buf, uint64_t val)
+void serialize_byte(buffer *buf, unsigned char val)
 {
-    memcpy((uint64_t *) *buf, &val, sizeof(uint64_t));
-    *buf += sizeof(uint64_t);
+    buffer_require(buf, 1);
+    buf->data[buf->next] = val;
+    buf->next++;
+    if(buf->next > buf->size) buf->size = buf->next;
 }
 
-void serialize_string(unsigned char **buf, const unsigned char *str)
+void serialize_short(buffer *buf, uint16_t val)
+{
+    buffer_require(buf, sizeof(uint16_t));
+    memcpy((uint16_t *) (buf->data + buf->next), &val, sizeof(uint16_t));
+    buf->next += sizeof(uint16_t);
+    if(buf->next > buf->size) buf->size = buf->next;
+}
+
+void serialize_long(buffer *buf, uint32_t val)
+{
+    buffer_require(buf, sizeof(uint32_t));
+    memcpy((uint32_t *) (buf->data + buf->next), &val, sizeof(uint32_t));
+    buf->next += sizeof(uint32_t);
+    if(buf->next > buf->size) buf->size = buf->next;
+}
+
+void serialize_long_long(buffer *buf, uint64_t val)
+{
+    buffer_require(buf, sizeof(uint64_t));
+    memcpy((uint64_t *) (buf->data + buf->next), &val, sizeof(uint64_t));
+    buf->next += sizeof(uint64_t);
+    if(buf->next > buf->size) buf->size = buf->next;
+}
+
+// Bitcoin special field serialization
+void serialize_string(buffer *buf, const unsigned char *str)
 {
     for(int i=0; i<strlen(str); ++i) {
         serialize_byte(buf, str[i]);
     }
 }
 
-void serialize_port(unsigned char **buf, uint16_t port)
+void serialize_port(buffer *buf, uint16_t port)
 {
     serialize_short(buf, htons(port));
 }
 
-// Bitcoin special field serialization
-void serialize_ipv4(unsigned char **buf, const char* ipstr)
+void serialize_ipv4(buffer *buf, const char* ipstr)
 {
     // 10 zero bytes
     for(int i=0; i<10; ++i) {
@@ -102,6 +141,14 @@ void serialize_ipv4(unsigned char **buf, const char* ipstr)
     }
 }
 
+uint64_t gen_nonce()
+{
+    srand(time(NULL));
+    // Concatenate 2 32bit rand(), assumes rand() returns a 32 bit number
+    return ((uint64_t) rand()) | (((uint64_t) rand()) << 32);
+}
+
+
 uint32_t gen_checksum(unsigned char *buf, size_t len)
 {
     // The first 4 byte of a double sha256
@@ -116,29 +163,29 @@ uint32_t gen_checksum(unsigned char *buf, size_t len)
     return *((uint32_t *) checksum);
 }
 
-void serialize_header(unsigned char **header, char *cmd, unsigned char *payload, size_t payload_len)
+void serialize_header(buffer *message, char *cmd)
 {
-    printf("Serialize header\n");
     // Magic number for testnet
-    serialize_long(header, MAGIC_NUMBER);
+    serialize_long(message, MAGIC_NUMBER);
     // TODO Test if cmd length is smaller than 12
     // Command
     for(int i=0; i<strlen(cmd); ++i) {
-        serialize_byte(header, cmd[i]);
+        serialize_byte(message, cmd[i]);
     }
     // Command padding
-    *header += 12-strlen(cmd);
+    message->next += 12-strlen(cmd);
     // Payload len
-    serialize_long(header, payload_len);
+    size_t payload_len = message->size - HEADER_LEN;
+    serialize_long(message, payload_len);
     // Checksum
-    serialize_long(header, gen_checksum(payload, payload_len));
+    serialize_long(message, gen_checksum(message->data+HEADER_LEN, payload_len));
 }
 
 int send_version_cmd(int sock)
 {
     // The payload length can change based on the size of the user-agent field
     const char *user_agent = "/test:0.0.1/";
-    const unsigned int header_len = 24;
+    /*
     const unsigned int payload_len = 86 + strlen(user_agent);
     const unsigned int message_len = header_len + payload_len;
     unsigned char *message = calloc(message_len, 1);
@@ -147,37 +194,49 @@ int send_version_cmd(int sock)
     unsigned char *header = message;
     unsigned char *payload_head = message + header_len;
     unsigned char *payload_tail = payload_head;
+    */
+    
+    buffer message;
+    buffer_init(&message);
+    
+    // Leave room for the message header that will be computed at the end
+    message.next += HEADER_LEN;
+    
     
     // Version
-    serialize_long(&payload_tail, PROTO_VERSION);
+    serialize_long(&message, PROTO_VERSION);
     // Services
-    serialize_long_long(&payload_tail, 1);
+    serialize_long_long(&message, 1);
     // Timestamp
-    serialize_long_long(&payload_tail, (uint64_t) time(NULL));
+    serialize_long_long(&message, (uint64_t) time(NULL));
     // Destination address
-    serialize_long_long(&payload_tail, 1);
-    serialize_ipv4(&payload_tail, REMOTE_NODE_ADDR);
-    serialize_port(&payload_tail, REMOTE_NODE_PORT);
+    serialize_long_long(&message, 1);
+    serialize_ipv4(&message, REMOTE_NODE_ADDR);
+    serialize_port(&message, REMOTE_NODE_PORT);
     // Source address
-    serialize_long_long(&payload_tail, 1);
-    serialize_ipv4(&payload_tail, "0.0.0.0");
-    serialize_port(&payload_tail, 0);
+    serialize_long_long(&message, 1);
+    serialize_ipv4(&message, "0.0.0.0");
+    serialize_port(&message, 0);
     // Random nonce
-    serialize_long_long(&payload_tail, gen_nonce());
+    serialize_long_long(&message, gen_nonce());
     // User agent
-    serialize_byte(&payload_tail, strlen(user_agent));
-    serialize_string(&payload_tail, user_agent);
+    serialize_byte(&message, strlen(user_agent));
+    serialize_string(&message, user_agent);
     // Start height, last block received by us
-    serialize_long(&payload_tail, 0);
+    serialize_long(&message, 0);
     // Relay
-    serialize_byte(&payload_tail, 1);
+    serialize_byte(&message, 1);
     
-    // Header
-    serialize_header(&header, "version", payload_head, payload_len);
     
-    dump_hex(message, message_len);
-    send(sock, message, message_len, 0);
-    free(message);
+    // Reset write head
+    message.next = 0;;
+    serialize_header(&message, "version");
+    
+    //send(sock, mess->data, mess->size, 0);
+    //free(message);
+    
+    dump_hex(message.data, message.size);
+    buffer_destroy(&message);
     return 0;
 }
 
@@ -201,11 +260,12 @@ int main(int argc, char **argv)
     }
     
     send_version_cmd(sock);
+    /*
     printf("RECV-------------------------------------------\n\n");
     unsigned char message_buffer[2000] = {0};
     int len = recv(sock, message_buffer, 2000, 0);
-    printf("%d\n", len);
     dump_hex(message_buffer, len);
+    */
     
     close(sock);
     return 0;
