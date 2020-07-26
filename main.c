@@ -16,6 +16,7 @@
 
 //#define MAGIC_NUMBER 0xd9b4bef9 // Main net
 #define HEADER_LEN 24
+#define USER_AGENT "/test:0.0.1/"
 #define MAGIC_NUMBER 0x0709110b// Testnet 3
 #define PROTO_VERSION 70015
 #define LOCAL_NODE_ADDR "0.0.0.0"
@@ -31,7 +32,6 @@
 // Debug function that prints an hex dump of a buffer
 void dump_hex(void *buff, size_t size)
 {
-    printf("HEX DUMP of size %d", size);
     for(int i=0; i<size; ++i) {
         printf("%02x ", ((unsigned char *) buff)[i]);
     }
@@ -183,25 +183,11 @@ void serialize_header(buffer *message, char *cmd)
 
 int send_version_cmd(int sock)
 {
-    // The payload length can change based on the size of the user-agent field
-    const char *user_agent = "/test:0.0.1/";
-    /*
-    const unsigned int payload_len = 86 + strlen(user_agent);
-    const unsigned int message_len = header_len + payload_len;
-    unsigned char *message = calloc(message_len, 1);
-    
-    // The header and payload pointers will be advanced accordingly in the serialize functions
-    unsigned char *header = message;
-    unsigned char *payload_head = message + header_len;
-    unsigned char *payload_tail = payload_head;
-    */
-    
     buffer message;
     buffer_init(&message);
     
     // Leave room for the message header that will be computed at the end
     message.next += HEADER_LEN;
-    
     
     // Version
     serialize_long(&message, PROTO_VERSION);
@@ -220,22 +206,18 @@ int send_version_cmd(int sock)
     // Random nonce
     serialize_long_long(&message, gen_nonce());
     // User agent
-    serialize_byte(&message, strlen(user_agent));
-    serialize_string(&message, user_agent);
+    serialize_byte(&message, strlen(USER_AGENT));
+    serialize_string(&message, USER_AGENT);
     // Start height, last block received by us
     serialize_long(&message, 0);
     // Relay
     serialize_byte(&message, 1);
     
-    
     // Reset write head
     message.next = 0;;
     serialize_header(&message, "version");
     
-    //send(sock, mess->data, mess->size, 0);
-    //free(message);
-    
-    dump_hex(message.data, message.size);
+    send(sock, message.data, message.size, 0);
     buffer_destroy(&message);
     return 0;
 }
@@ -260,12 +242,10 @@ int main(int argc, char **argv)
     }
     
     send_version_cmd(sock);
-    /*
     printf("RECV-------------------------------------------\n\n");
     unsigned char message_buffer[2000] = {0};
     int len = recv(sock, message_buffer, 2000, 0);
     dump_hex(message_buffer, len);
-    */
     
     close(sock);
     return 0;
