@@ -1,2 +1,2 @@
 default:
-	gcc -o test -lssl -lcrypto buffer.c main.c && ./test
+	gcc -o test -lssl -lcrypto debug.c crypto.c buffer.c dns.c main.c && ./test

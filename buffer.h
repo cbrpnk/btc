@@ -1,3 +1,6 @@
+#ifndef BITCOIN_BUFFER_H
+#define BITCOIN_BUFFER_H
+
 #include <stdint.h>
 
 // Buffer serialization
@@ -16,3 +19,5 @@ void buffer_push_u8(buffer *buf, unsigned char val);
 void buffer_push_u16(buffer *buf, uint16_t val);
 void buffer_push_u32(buffer *buf, uint32_t val);
 void buffer_push_u64(buffer *buf, uint64_t val);
+
+#endif
