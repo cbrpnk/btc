@@ -53,7 +53,7 @@ typedef struct bc_node {
 } bc_node;
 
 // Bitcoin special field serialization
-void serialize_string(buffer *buf, const unsigned char *str)
+void serialize_string(buffer *buf, const char *str)
 {
     for(int i=0; i<strlen(str); ++i) {
         buffer_push_u8(buf, str[i]);
