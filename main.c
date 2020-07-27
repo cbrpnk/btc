@@ -7,27 +7,17 @@
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
-#include <openssl/sha.h>
+#include <stdbool.h>
 
+#include "crypto.h"
 #include "buffer.h"
+#include "dns.h"
+#include "debug.h"
 
 // TODO Implement dns based seeding
 // Testnet seed dns
 // seed.tbtc.petertodd.org
 // testnet-seed.bitcoin.jonasschnelli.ch
-
-typedef struct bc_network {
-    uint32_t magic_number;
-    uint16_t default_port;
-} bc_network;
-
-typedef struct bc_node {
-    bc_network network;
-    uint32_t protocol_version;
-    char ip[15];
-    uint16_t port;
-    int socket;
-} bc_node;
 
 const uint32_t protocol_version = 70015;
 const char *user_agent = "/test:0.0.1/";
@@ -36,14 +26,31 @@ const size_t message_header_len = 24;
 const uint32_t testnet_magic_number = 0x0709110b;
 const uint16_t testnet_port = 18333;
 
-// Debug function that prints an hex dump of a buffer
-void dump_hex(void *buff, size_t size)
-{
-    for(int i=0; i<size; ++i) {
-        printf("%02x ", ((unsigned char *) buff)[i]);
-    }
-    printf("\n");
-}
+/*
+typedef struct bc_socket {
+    char ip[15];
+    uint16_t port;
+    int id;
+} bc_socket;
+
+typedef struct bc_connection {
+    bc_network *network;
+} bc_connection;
+*/
+
+typedef struct bc_network {
+    uint32_t magic_number;
+    uint16_t default_port;
+} bc_network;
+
+typedef struct bc_node {
+    bc_network *network;
+    uint32_t protocol_version;
+    char ip[15];
+    uint16_t port;
+    int socket;
+    bool connected;
+} bc_node;
 
 // Bitcoin special field serialization
 void serialize_string(buffer *buf, const unsigned char *str)
@@ -79,31 +86,10 @@ void serialize_ipv4(buffer *buf, const char* ipstr)
     }
 }
 
-uint64_t gen_nonce()
-{
-    srand(time(NULL));
-    // Concatenate 2 32bit rand(), assumes rand() returns a 32 bit number
-    return ((uint64_t) rand()) | (((uint64_t) rand()) << 32);
-}
-
-uint32_t gen_checksum(unsigned char *buf, size_t len)
-{
-    // The first 4 byte of a double sha256
-    unsigned char checksum[SHA256_DIGEST_LENGTH];
-    SHA256_CTX ctx;
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, buf, len);
-    SHA256_Final(checksum, &ctx);
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, checksum, SHA256_DIGEST_LENGTH);
-    SHA256_Final(checksum, &ctx);
-    return *((uint32_t *) checksum);
-}
-
 void serialize_header(bc_node *node, buffer *message, char *cmd)
 {
     // Magic number for testnet
-    buffer_push_u32(message, node->network.magic_number);
+    buffer_push_u32(message, node->network->magic_number);
     // TODO Test if cmd length is smaller than 12
     // Command
     for(int i=0; i<strlen(cmd); ++i) {
@@ -141,7 +127,7 @@ int send_version_cmd(bc_node *node)
     serialize_ipv4(&message, "0.0.0.0");
     serialize_port(&message, 0);
     // Random nonce
-    buffer_push_u64(&message, gen_nonce());
+    buffer_push_u64(&message, gen_nonce_64());
     // User agent
     buffer_push_u8(&message, strlen(user_agent));
     serialize_string(&message, user_agent);
@@ -177,6 +163,7 @@ int connect_to_remote(bc_node *remote)
         return -1;
     }
     
+    remote->connected = true;
     return 0;
 }
 
@@ -188,15 +175,19 @@ int disconnect_from_remote(bc_node *remote)
 
 int main(int argc, char **argv)
 {
+    /*
+    bc_network testnet = {
+        .magic_number = testnet_magic_number,
+        .default_port = testnet_port,
+    };
+    
     bc_node remote = {
-        .network = {
-            .magic_number = testnet_magic_number,
-            .default_port = testnet_port,
-        },
+        .network = &testnet,
         .protocol_version = protocol_version,
         .ip = "50.2.13.165",
-        .port = testnet_port,
-        .socket = 0
+        .port = testnet.default_port,
+        .socket = 0,
+        .connected = false
     };
     
     if(connect_to_remote(&remote) < 0) {
@@ -214,5 +205,8 @@ int main(int argc, char **argv)
     dump_hex(message_buffer, len);
     
     disconnect_from_remote(&remote);
+    */
+    
+    test_dns();
     return 0;
 }
