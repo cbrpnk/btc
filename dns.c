@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "dns.h"
 #include "crypto.h"
@@ -60,6 +61,14 @@ int bitcoin_socket_destroy(bitcoin_socket *sock)
 
 int bitcoin_socket_send(bitcoin_socket *sock, buffer *buf)
 {
+    switch(sock->type) {
+    case BITCOIN_SOCKET_TCP:
+        // TODO
+        break;
+    case BITCOIN_SOCKET_UDP:
+        sendto(sock->id, buf->data, buf->size, 0, &(sock->sockaddr), sizeof(sock->sockaddr));
+        break;
+    }
     return 0;
 }
 
@@ -68,34 +77,59 @@ int bitcoin_socket_recv(bitcoin_socket *sock, buffer *buf)
     return 0;
 }
 
-uint16_t dns_gen_flags(bool qr, uint8_t opcode, bool aa, bool tc, bool rd,
-                       bool ra, uint8_t rcode)
+void dns_serialize(buffer *buf, dns_message *mess)
 {
+    // Id
+    buffer_push_u16(buf, mess->header.id);
+    // Flags
     uint16_t flags = 0;
-    flags |= qr;
-    flags |= (opcode & 0x0f) << 1;
-    flags |= aa << 5;
-    flags |= tc << 6;
-    flags |= rd << 7;
-    flags |= ra << 8;
-    flags |= rcode << 12;
-    
-    return flags;
+    flags |= mess->header.qr;
+    flags |= (mess->header.opcode & 0x0f) << 1;
+    flags |= mess->header.aa << 5;
+    flags |= mess->header.tc << 6;
+    flags |= mess->header.rd << 7;
+    flags |= mess->header.ra << 8;
+    flags |= mess->header.rcode << 12;
+    buffer_push_u16(buf, flags);
+    // section count
+    buffer_push_u16(buf, htons(mess->header.question_count));
+    buffer_push_u16(buf, htons(mess->header.answer_count));
+    buffer_push_u16(buf, htons(mess->header.authority_count));
+    buffer_push_u16(buf, htons(mess->header.additional_count));
+    // Question section
+    buffer_push_string(buf, mess->question.domain, strlen(mess->question.domain));
+    buffer_push_u16(buf, htons(mess->question.type));
+    buffer_push_u16(buf, htons(mess->question.dns_class));
 }
 
 int dns_get_records(bitcoin_socket *sock, char *domain)
 {
     // Create request
     dns_message message = {
-        .header.id = gen_nonce_16(),
-        .header.flags = dns_gen_flags(0, 0, 0, 0, 1, 0, 0),
+        .header.id               = gen_nonce_16(),
+        .header.qr               = 0,
+        .header.opcode           = 0,
+        .header.aa               = 0,
+        .header.tc               = 0,
+        .header.rd               = 1,
+        .header.ra               = 0,
+        .header.rcode            = 0,
+        .header.question_count   = 1,
+        .header.answer_count     = 0,
+        .header.authority_count  = 0,
+        .header.additional_count = 0,
+        .question.domain         = "google.com",
+        .question.type           = 1,
+        .question.dns_class      = 1
     };
     
-    dump_hex(&message, 32);
     
     // Serialize request
     buffer req;
     buffer_init(&req);
+    
+    dns_serialize(&req, &message);
+    dump_hex(req.data, req.size);
     
     // Send / Recv
     bitcoin_socket_send(sock, &req);
