@@ -76,6 +76,7 @@ typedef struct bitcoin_dns_A_record {
     char                    ip[15];
 } bitcoin_dns_A_record;
 
+int dns_get_records(bitcoin_socket *sock, char *domain);
 int test_dns();
 
 #endif

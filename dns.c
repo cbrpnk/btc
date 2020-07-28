@@ -89,6 +89,19 @@ int bitcoin_socket_recv(bitcoin_socket *sock, buffer *buf)
     return 0;
 }
 
+static void dns_serialize_label(buffer *buf, char *domain)
+{
+    char *label;
+    while((label = strtok(domain, ".")) != NULL) {
+        size_t len = strlen(label);
+        buffer_push_u8(buf, len);
+        buffer_push_string(buf, label, len);
+        // Required by strok so that it continues to work on the same string
+        domain = NULL;
+    }
+    buffer_push_u8(buf, 0);
+}
+
 void dns_serialize(buffer *buf, dns_message *mess)
 {
     // Id
@@ -109,14 +122,7 @@ void dns_serialize(buffer *buf, dns_message *mess)
     buffer_push_u16(buf, htons(mess->header.authority_count));
     buffer_push_u16(buf, htons(mess->header.additional_count));
     // Question section
-
-    // TODO !!!!
-    buffer_push_u8(buf, 6); // ?????
-    buffer_push_string(buf, "google", strlen("google"));
-    buffer_push_u8(buf, 3); // ?????
-    buffer_push_string(buf, "com", strlen("com"));
-    buffer_push_u8(buf, 0); // ?????
-    // End TODO
+    dns_serialize_label(buf, mess->question.domain);
     buffer_push_u16(buf, htons(mess->question.type));
     buffer_push_u16(buf, htons(mess->question.dns_class));
 }
