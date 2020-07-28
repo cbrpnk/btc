@@ -61,3 +61,11 @@ void buffer_push_u64(buffer *buf, uint64_t val)
     buf->next += sizeof(uint64_t);
     if(buf->next > buf->size) buf->size = buf->next;
 }
+
+void buffer_push_string(buffer *buf, char *val, size_t len)
+{
+    buffer_require(buf, len);
+    memcpy((buf->data + buf->next), val, len);
+    buf->next += len;
+    if(buf->next > buf->size) buf->size = buf->next;
+}
