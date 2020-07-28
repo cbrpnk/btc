@@ -26,7 +26,7 @@ typedef struct bitcoin_socket {
     bool                ready;
 } bitcoin_socket;
 
-int bitcoin_socket_init(bitcoin_socket *sock);
+int bitcoin_socket_init(bitcoin_socket *sock, bitcoin_socket_type type, char *ip, uint16_t port);
 int bitcoin_socket_destroy(bitcoin_socket *sock);
 int bitcoin_socket_send(bitcoin_socket *sock, buffer *buf);
 int bitcoin_socket_recv(bitcoin_socket *sock, buffer *buf);
@@ -76,7 +76,7 @@ typedef struct bitcoin_dns_A_record {
     char                    ip[15];
 } bitcoin_dns_A_record;
 
-int dns_get_records(bitcoin_socket *sock, char *domain);
+int dns_get_records(char *domain);
 int test_dns();
 
 #endif

@@ -9,9 +9,16 @@
 #include "crypto.h"
 #include "debug.h"
 
-
-int bitcoin_socket_init(bitcoin_socket *sock)
+int bitcoin_socket_init(bitcoin_socket *sock, bitcoin_socket_type type, char *ip, uint16_t port)
 {
+    // Init data
+    sock->type = type;
+    sock->id = 0;
+    strncpy(sock->ip, ip, 15);
+    sock->port = port;
+    sock->ready = false;
+    
+    // Create socket
     switch(sock->type) {
     case BITCOIN_SOCKET_TCP:
         sock->id = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -28,6 +35,7 @@ int bitcoin_socket_init(bitcoin_socket *sock)
         return -1;
     }
     
+    // Connect
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(sock->port);
@@ -127,8 +135,14 @@ void dns_serialize(buffer *buf, dns_message *mess)
     buffer_push_u16(buf, htons(mess->question.dns_class));
 }
 
-int dns_get_records(bitcoin_socket *sock, char *domain)
+int dns_get_records(char *domain)
 {
+    bitcoin_socket sock;
+    if(bitcoin_socket_init(&sock, BITCOIN_SOCKET_UDP, DEFAULT_GATEWAY, DNS_PORT) != 0) {
+        printf("Error connecting DNS socket\n");
+        return -1;
+    }
+    
     // Create request
     dns_message message = {
         .header.id               = gen_nonce_16(),
@@ -143,10 +157,11 @@ int dns_get_records(bitcoin_socket *sock, char *domain)
         .header.answer_count     = 0,
         .header.authority_count  = 0,
         .header.additional_count = 0,
-        .question.domain         = "google.com",
+        .question.domain         = "",
         .question.type           = 1,
         .question.dns_class      = 1
     };
+    strncpy(message.question.domain, domain, 255);
     
     
     // Send request
@@ -155,39 +170,24 @@ int dns_get_records(bitcoin_socket *sock, char *domain)
     
     dns_serialize(&req, &message);
     dump_hex(req.data, req.size);       // Debug
-    bitcoin_socket_send(sock, &req);
+    bitcoin_socket_send(&sock, &req);
     
     // Receive response
     buffer res;
     buffer_init(&res);
-    bitcoin_socket_recv(sock, &res);
+    bitcoin_socket_recv(&sock, &res);
     dump_hex(res.data, res.size);       // Debug
     
     // Cleanup
     buffer_destroy(&req);
     buffer_destroy(&res);
+    bitcoin_socket_destroy(&sock);
     return 0;
 }
 
 int test_dns()
 {
     printf("test dns\n");
-    
-    bitcoin_socket dns_socket = {
-        .type = BITCOIN_SOCKET_UDP,
-        .id = 0,
-        .ip = DEFAULT_GATEWAY,
-        .port = DNS_PORT,
-        .ready = false
-    };
-    
-    if(bitcoin_socket_init(&dns_socket) != 0) {
-        printf("Error connecting DNS socket\n");
-        return -1;
-    }
-    
-    dns_get_records(&dns_socket, "seed.tbtc.petertodd.org");
-    
-    bitcoin_socket_destroy(&dns_socket);
+    dns_get_records("seed.tbtc.petertodd.org");
     return 0;
 }
