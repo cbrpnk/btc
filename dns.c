@@ -52,7 +52,7 @@ int bitcoin_socket_init(bitcoin_socket *sock)
 
 int bitcoin_socket_destroy(bitcoin_socket *sock)
 {
-    if(sock->type == BITCOIN_SOCKET_TCP  && sock->ready) {
+    if(sock->ready) {
         close(sock->id);
     }
     sock->ready = false;
@@ -66,7 +66,7 @@ int bitcoin_socket_send(bitcoin_socket *sock, buffer *buf)
         // TODO
         break;
     case BITCOIN_SOCKET_UDP:
-        sendto(sock->id, buf->data, buf->size, 0, &(sock->sockaddr), sizeof(sock->sockaddr));
+        sendto(sock->id, buf->data, buf->size, 0, (struct sockaddr *) &sock->sockaddr, sizeof(sock->sockaddr));
         break;
     }
     return 0;
@@ -74,6 +74,18 @@ int bitcoin_socket_send(bitcoin_socket *sock, buffer *buf)
 
 int bitcoin_socket_recv(bitcoin_socket *sock, buffer *buf)
 {
+    // TODO: Hack, remove, this is needed only for UDP sockets
+    struct sockaddr_in res_sockaddr;
+    unsigned int len;
+    
+    switch(sock->type) {
+    case BITCOIN_SOCKET_TCP:
+        // TODO
+        break;
+    case BITCOIN_SOCKET_UDP:
+        recvfrom(sock->id, buf->data, buf->size, 0, (struct sockaddr *) &res_sockaddr, &len);
+        break;
+    }
     return 0;
 }
 
@@ -131,19 +143,23 @@ int dns_get_records(bitcoin_socket *sock, char *domain)
     };
     
     
-    // Serialize request
+    // Send request
     buffer req;
     buffer_init(&req);
     
     dns_serialize(&req, &message);
-    dump_hex(req.data, req.size);
-    
-    // Send / Recv
+    dump_hex(req.data, req.size);       // Debug
     bitcoin_socket_send(sock, &req);
     
-    // Deserialize response
+    // Receive response
+    buffer res;
+    buffer_init(&res);
+    bitcoin_socket_recv(sock, &res);
+    dump_hex(res.data, res.size);       // Debug
     
+    // Cleanup
     buffer_destroy(&req);
+    buffer_destroy(&res);
     return 0;
 }
 
