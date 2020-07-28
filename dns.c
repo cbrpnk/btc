@@ -90,14 +90,21 @@ void dns_serialize(buffer *buf, dns_message *mess)
     flags |= mess->header.rd << 7;
     flags |= mess->header.ra << 8;
     flags |= mess->header.rcode << 12;
-    buffer_push_u16(buf, flags);
+    buffer_push_u16(buf, htons(flags));
     // section count
     buffer_push_u16(buf, htons(mess->header.question_count));
     buffer_push_u16(buf, htons(mess->header.answer_count));
     buffer_push_u16(buf, htons(mess->header.authority_count));
     buffer_push_u16(buf, htons(mess->header.additional_count));
     // Question section
-    buffer_push_string(buf, mess->question.domain, strlen(mess->question.domain));
+
+    // TODO !!!!
+    buffer_push_u8(buf, 6); // ?????
+    buffer_push_string(buf, "google", strlen("google"));
+    buffer_push_u8(buf, 3); // ?????
+    buffer_push_string(buf, "com", strlen("com"));
+    buffer_push_u8(buf, 0); // ?????
+    // End TODO
     buffer_push_u16(buf, htons(mess->question.type));
     buffer_push_u16(buf, htons(mess->question.dns_class));
 }
