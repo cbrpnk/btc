@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -9,92 +10,20 @@
 #include "crypto.h"
 #include "debug.h"
 
-int bitcoin_socket_init(bitcoin_socket *sock, bitcoin_socket_type type, char *ip, uint16_t port)
+static void dns_serialize_flags(buffer *buf, dns_message *mess)
 {
-    // Init data
-    sock->type = type;
-    sock->id = 0;
-    strncpy(sock->ip, ip, 15);
-    sock->port = port;
-    sock->ready = false;
+    uint16_t flags = 0;
     
-    // Create socket
-    switch(sock->type) {
-    case BITCOIN_SOCKET_TCP:
-        sock->id = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        break;
-    case BITCOIN_SOCKET_UDP:
-        sock->id = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        break;
-    default:
-        printf("Invalid bitcoin_socket_type\n");
-        return -1;
-    }
-    if(sock->id < 0) {
-        printf("Socket creation error\n");
-        return -1;
-    }
+    flags |= mess->header.qr << 15;
+    flags |= (mess->header.opcode & 0x0f) << 11;
+    flags |= mess->header.aa << 10;
+    flags |= mess->header.tc << 9;
+    flags |= mess->header.rd << 8;
+    flags |= mess->header.ra << 7;
+    flags |= (mess->header.opcode & 0x0f);
     
-    // Connect
-    struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(sock->port);
-    inet_pton(AF_INET, sock->ip, &server_addr.sin_addr);
+    buffer_push_u16(buf, htons(flags));
     
-    switch(sock->type) {
-    case BITCOIN_SOCKET_TCP:
-        if((connect(sock->id, (struct sockaddr *) &server_addr,
-                sizeof(server_addr))) < 0) {
-            printf("Connection Failed\n");
-            return -1;
-        }
-        break;
-    case BITCOIN_SOCKET_UDP:
-        sock->sockaddr = server_addr;
-        break;
-    }
-        
-    sock->ready = true;
-    return 0;
-}
-
-int bitcoin_socket_destroy(bitcoin_socket *sock)
-{
-    if(sock->ready) {
-        close(sock->id);
-    }
-    sock->ready = false;
-    return 0;
-}
-
-int bitcoin_socket_send(bitcoin_socket *sock, buffer *buf)
-{
-    switch(sock->type) {
-    case BITCOIN_SOCKET_TCP:
-        // TODO
-        break;
-    case BITCOIN_SOCKET_UDP:
-        sendto(sock->id, buf->data, buf->size, 0, (struct sockaddr *) &sock->sockaddr, sizeof(sock->sockaddr));
-        break;
-    }
-    return 0;
-}
-
-int bitcoin_socket_recv(bitcoin_socket *sock, buffer *buf)
-{
-    // TODO: Hack, remove, this is needed only for UDP sockets
-    struct sockaddr_in res_sockaddr;
-    unsigned int len;
-    
-    switch(sock->type) {
-    case BITCOIN_SOCKET_TCP:
-        // TODO
-        break;
-    case BITCOIN_SOCKET_UDP:
-        recvfrom(sock->id, buf->data, buf->size, 0, (struct sockaddr *) &res_sockaddr, &len);
-        break;
-    }
-    return 0;
 }
 
 static void dns_serialize_label(buffer *buf, char *domain)
@@ -110,20 +39,12 @@ static void dns_serialize_label(buffer *buf, char *domain)
     buffer_push_u8(buf, 0);
 }
 
-void dns_serialize(buffer *buf, dns_message *mess)
+static void dns_serialize(buffer *buf, dns_message *mess)
 {
     // Id
     buffer_push_u16(buf, mess->header.id);
     // Flags
-    uint16_t flags = 0;
-    flags |= mess->header.qr;
-    flags |= (mess->header.opcode & 0x0f) << 1;
-    flags |= mess->header.aa << 5;
-    flags |= mess->header.tc << 6;
-    flags |= mess->header.rd << 7;
-    flags |= mess->header.ra << 8;
-    flags |= mess->header.rcode << 12;
-    buffer_push_u16(buf, htons(flags));
+    dns_serialize_flags(buf, mess);
     // section count
     buffer_push_u16(buf, htons(mess->header.question_count));
     buffer_push_u16(buf, htons(mess->header.answer_count));
@@ -135,53 +56,77 @@ void dns_serialize(buffer *buf, dns_message *mess)
     buffer_push_u16(buf, htons(mess->question.dns_class));
 }
 
-int dns_get_records(char *domain)
+static void dns_deserialize(dns_message *mess, buffer *buf)
 {
-    bitcoin_socket sock;
-    if(bitcoin_socket_init(&sock, BITCOIN_SOCKET_UDP, DEFAULT_GATEWAY, DNS_PORT) != 0) {
-        printf("Error connecting DNS socket\n");
+    mess->header.id = 1;
+}
+
+static int create_socket(int *sock, struct sockaddr_in *server_addr)
+{
+    *sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    
+    // Settings
+    server_addr->sin_family = AF_INET;
+    server_addr->sin_port = htons(DNS_PORT);
+    inet_pton(AF_INET, DEFAULT_GATEWAY, &server_addr->sin_addr);
+    
+    // Connect
+    if((connect(*sock, (struct sockaddr *) server_addr,
+            sizeof(*server_addr))) < 0) {
+        printf("Connection Failed\n");
         return -1;
     }
     
-    // Create request
-    dns_message message = {
-        .header.id               = gen_nonce_16(),
-        .header.qr               = 0,
-        .header.opcode           = 0,
-        .header.aa               = 0,
-        .header.tc               = 0,
-        .header.rd               = 1,
-        .header.ra               = 0,
-        .header.rcode            = 0,
-        .header.question_count   = 1,
-        .header.answer_count     = 0,
-        .header.authority_count  = 0,
-        .header.additional_count = 0,
-        .question.domain         = "",
-        .question.type           = 1,
-        .question.dns_class      = 1
-    };
-    strncpy(message.question.domain, domain, 255);
-    
-    
+    return 0;
+}
+
+static void send_request(int sock, struct sockaddr_in *server_addr, dns_message *mess)
+{
     // Send request
     buffer req;
-    buffer_init(&req);
-    
-    dns_serialize(&req, &message);
-    dump_hex(req.data, req.size);       // Debug
-    bitcoin_socket_send(&sock, &req);
-    
+    buffer_init(&req, DNS_MESSAGE_MAXLEN);
+    dns_serialize(&req, mess);
+    sendto(sock, req.data, req.size, 0, (struct sockaddr *) server_addr, sizeof(*server_addr));
+    buffer_destroy(&req);
+}
+
+static void recv_response(int sock, dns_message *mess)
+{
     // Receive response
     buffer res;
-    buffer_init(&res);
-    bitcoin_socket_recv(&sock, &res);
-    dump_hex(res.data, res.size);       // Debug
-    
-    // Cleanup
-    buffer_destroy(&req);
+    buffer_init(&res, DNS_MESSAGE_MAXLEN);
+    int read_len = recvfrom(sock, res.data, 512, 0, NULL, NULL);
+    res.size += read_len;
+    dns_deserialize(mess, &res);
+    dump_hex(res.data, res.size);
     buffer_destroy(&res);
-    bitcoin_socket_destroy(&sock);
+}
+
+int dns_get_records(char *domain)
+{
+    int sock = 0;
+    struct sockaddr_in server_addr;
+    
+    if(create_socket(&sock, &server_addr) != 0) {
+        return -1;
+    }
+    
+    // Request
+    dns_message message = {0};
+    message.header.rd = 1;
+    message.header.question_count = 1;
+    strncpy(message.question.domain, domain, 255);
+    message.question.type = 1;
+    message.question.dns_class = 1;
+    send_request(sock, &server_addr, &message);
+    
+    // Response
+    dns_message response = {0};
+    recv_response(sock, &response);
+    printf("id: %x\n", response.header.id);
+    printf("answer count: %d\n", response.header.answer_count);
+    
+    close(sock);
     return 0;
 }
 

@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include "buffer.h"
 
-void buffer_init(buffer *buf)
+void buffer_init(buffer *buf, size_t size)
 {
-    buf->capacity = 100;
+    buf->capacity = size;
     buf->data = calloc(buf->capacity, 1);
     buf->next = 0;
     buf->size = 0;
