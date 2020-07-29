@@ -12,7 +12,7 @@ typedef struct buffer {
     size_t capacity;
 } buffer;
 
-void buffer_init(buffer *buf);
+void buffer_init(buffer *buf, size_t size);
 void buffer_destroy(buffer *buf);
 void buffer_require(buffer *buf, size_t size);
 

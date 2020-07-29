@@ -107,7 +107,7 @@ void serialize_header(bc_node *node, buffer *message, char *cmd)
 int send_version_cmd(bc_node *node)
 {
     buffer message;
-    buffer_init(&message);
+    buffer_init(&message, 100);
     
     // Leave room for the message header that will be computed at the end
     message.next += message_header_len;

@@ -6,32 +6,10 @@
 
 #include "buffer.h"
 
-/* ----------------------------- SOCKET ------------------------------*/
-
 // TODO this should not be hardcoded
-#define DEFAULT_GATEWAY "192.168.0.1"
-#define DNS_PORT        53
-
-typedef enum bitcoin_socket_type {
-    BITCOIN_SOCKET_TCP,
-    BITCOIN_SOCKET_UDP
-} bitcoin_socket_type;
-
-typedef struct bitcoin_socket {
-    bitcoin_socket_type type;
-    int                 id;
-    char                ip[15];
-    uint16_t            port;
-    struct sockaddr_in  sockaddr;
-    bool                ready;
-} bitcoin_socket;
-
-int bitcoin_socket_init(bitcoin_socket *sock, bitcoin_socket_type type, char *ip, uint16_t port);
-int bitcoin_socket_destroy(bitcoin_socket *sock);
-int bitcoin_socket_send(bitcoin_socket *sock, buffer *buf);
-int bitcoin_socket_recv(bitcoin_socket *sock, buffer *buf);
-
-/* --------------------------- DNS --------------------------------*/
+#define DEFAULT_GATEWAY     "192.168.0.1"
+#define DNS_PORT            53
+#define DNS_MESSAGE_MAXLEN  512
 
 struct dns_header {
     // A random nonce used to match answers with questions
