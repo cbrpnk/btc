@@ -26,6 +26,11 @@ static void dns_serialize_flags(buffer *buf, dns_message *mess)
     
 }
 
+static void dns_deserialize_flags(buffer *buf, dns_message *mess)
+{
+    // TODO here
+}
+
 static void dns_serialize_label(buffer *buf, char *domain)
 {
     char *label;
@@ -42,7 +47,7 @@ static void dns_serialize_label(buffer *buf, char *domain)
 static void dns_serialize(buffer *buf, dns_message *mess)
 {
     // Id
-    buffer_push_u16(buf, mess->header.id);
+    buffer_push_u16(buf, htons(mess->header.id));
     // Flags
     dns_serialize_flags(buf, mess);
     // section count
@@ -58,7 +63,8 @@ static void dns_serialize(buffer *buf, dns_message *mess)
 
 static void dns_deserialize(dns_message *mess, buffer *buf)
 {
-    mess->header.id = 1;
+    mess->header.id = ntohs(buffer_pop_u16(buf));
+    deserialize_flags(mess, buf);
 }
 
 static int create_socket(int *sock, struct sockaddr_in *server_addr)
@@ -113,6 +119,7 @@ int dns_get_records(char *domain)
     
     // Request
     dns_message message = {0};
+    message.header.id = gen_nonce_16();
     message.header.rd = 1;
     message.header.question_count = 1;
     strncpy(message.question.domain, domain, 255);
