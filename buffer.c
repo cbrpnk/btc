@@ -1,5 +1,6 @@
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "buffer.h"
 
 void buffer_init(buffer *buf, size_t size)
@@ -30,7 +31,7 @@ void buffer_require(buffer *buf, size_t size)
     }
 }
 
-void buffer_push_u8(buffer *buf, unsigned char val)
+void buffer_push_u8(buffer *buf, uint8_t val)
 {
     buffer_require(buf, 1);
     buf->data[buf->next] = val;
@@ -68,4 +69,34 @@ void buffer_push_string(buffer *buf, char *val, size_t len)
     memcpy((buf->data + buf->next), val, len);
     buf->next += len;
     if(buf->next > buf->size) buf->size = buf->next;
+}
+
+uint8_t buffer_pop_u8(buffer *buf)
+{
+    printf("not implemented\n");
+    return 0;
+}
+
+uint16_t buffer_pop_u16(buffer *buf)
+{
+    uint16_t val = *((uint16_t*) (buf->data + buf->next));
+    buf->next += sizeof(uint16_t);
+    return val;
+}
+
+uint32_t buffer_pop_u32(buffer *buf)
+{
+    printf("not implemented\n");
+    return 0;
+}
+
+uint64_t buffer_pop_u64(buffer *buf)
+{
+    printf("not implemented\n");
+    return 0;
+}
+
+void buffer_pop_string(char *val, size_t *len, buffer *buf)
+{
+    printf("not implemented\n");
 }
