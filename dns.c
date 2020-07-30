@@ -26,7 +26,7 @@ static void dns_serialize_flags(buffer *buf, dns_message *mess)
     
 }
 
-static void dns_deserialize_flags(buffer *buf, dns_message *mess)
+static void dns_deserialize_flags(dns_message *mess, buffer *buf)
 {
     // TODO here
 }
@@ -64,7 +64,7 @@ static void dns_serialize(buffer *buf, dns_message *mess)
 static void dns_deserialize(dns_message *mess, buffer *buf)
 {
     mess->header.id = ntohs(buffer_pop_u16(buf));
-    deserialize_flags(mess, buf);
+    dns_deserialize_flags(mess, buf);
 }
 
 static int create_socket(int *sock, struct sockaddr_in *server_addr)
