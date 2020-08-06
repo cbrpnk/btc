@@ -207,6 +207,6 @@ int main(int argc, char **argv)
     disconnect_from_remote(&remote);
     */
     
-    test_dns();
+    dns_get_records("seed.tbtc.petertodd.org");
     return 0;
 }
