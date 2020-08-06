@@ -136,10 +136,3 @@ int dns_get_records(char *domain)
     close(sock);
     return 0;
 }
-
-int test_dns()
-{
-    printf("test dns\n");
-    dns_get_records("seed.tbtc.petertodd.org");
-    return 0;
-}
