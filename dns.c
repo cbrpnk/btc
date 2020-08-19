@@ -20,7 +20,7 @@ static void dns_serialize_flags(buffer *buf, dns_message *mess)
     flags |= mess->header.tc << 9;
     flags |= mess->header.rd << 8;
     flags |= mess->header.ra << 7;
-    flags |= (mess->header.opcode & 0x0f);
+    flags |= (mess->header.rcode & 0x0f);
     
     buffer_push_u16(buf, htons(flags));
     
@@ -28,7 +28,14 @@ static void dns_serialize_flags(buffer *buf, dns_message *mess)
 
 static void dns_deserialize_flags(dns_message *mess, buffer *buf)
 {
-    // TODO here
+    uint16_t flags = ntohs(buffer_pop_u16(buf));
+    mess->header.qr = flags >> 15;
+    mess->header.opcode = (flags >> 11) & 0x0f;
+    mess->header.aa = (flags >> 10) & 1;
+    mess->header.tc = (flags >> 9) & 1;
+    mess->header.rd = (flags >> 8) & 1;
+    mess->header.ra = (flags >> 7) & 1;
+    mess->header.rcode = flags & 0x0f;
 }
 
 static void dns_serialize_label(buffer *buf, char *domain)
@@ -103,8 +110,8 @@ static void recv_response(int sock, dns_message *mess)
     buffer_init(&res, DNS_MESSAGE_MAXLEN);
     int read_len = recvfrom(sock, res.data, 512, 0, NULL, NULL);
     res.size += read_len;
-    dns_deserialize(mess, &res);
     dump_hex(res.data, res.size);
+    dns_deserialize(mess, &res);
     buffer_destroy(&res);
 }
 
