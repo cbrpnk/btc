@@ -36,7 +36,7 @@ struct dns_question {
 };
 
 struct dns_answer {
-    char     name[255];
+    char     domain[255];
     uint16_t type;
     uint16_t dns_class;
     uint32_t ttl;
@@ -46,6 +46,9 @@ struct dns_answer {
 
 typedef struct dns_message {
     struct dns_header   header;
+    // TODO manke question and answer pointers to allocated mem where and
+    // array of questions and answers are stored. The len of the arrays are
+    // int the header (question_count, answer_count)
     struct dns_question question;
     struct dns_answer   answer;
 } dns_message;

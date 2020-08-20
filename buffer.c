@@ -73,8 +73,9 @@ void buffer_push_string(buffer *buf, char *val, size_t len)
 
 uint8_t buffer_pop_u8(buffer *buf)
 {
-    printf("not implemented\n");
-    return 0;
+    uint8_t val = *((uint8_t*) (buf->data + buf->next));
+    buf->next += sizeof(uint8_t);
+    return val;
 }
 
 uint16_t buffer_pop_u16(buffer *buf)
