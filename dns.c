@@ -51,13 +51,35 @@ static void dns_serialize_label(buffer *buf, char *domain)
     buffer_push_u8(buf, 0);
 }
 
+static void dns_deserialize_label(buffer *buf, char *domain)
+{
+    // Check wether record's label is in the compressed format.
+    // Compressed format starts with 11 as the MSBs
+    if(*(buf->data+buf->next) >= 0xc0) {
+        // Compressed
+        // TODO
+    } else {
+        // Not compressed
+        uint8_t len = 0;
+        int i=0;
+        while((len = buffer_pop_u8(buf)) != 0) {
+            if(i>0) {
+                domain[i++] = '.';
+            }
+            for(int j=0; j<len; ++j) {
+                domain[i++] = buffer_pop_u8(buf);
+            }
+        }
+    }
+}
+
 static void dns_serialize(buffer *buf, dns_message *mess)
 {
     // Id
     buffer_push_u16(buf, htons(mess->header.id));
     // Flags
     dns_serialize_flags(buf, mess);
-    // section count
+    // Section count
     buffer_push_u16(buf, htons(mess->header.question_count));
     buffer_push_u16(buf, htons(mess->header.answer_count));
     buffer_push_u16(buf, htons(mess->header.authority_count));
@@ -70,8 +92,26 @@ static void dns_serialize(buffer *buf, dns_message *mess)
 
 static void dns_deserialize(dns_message *mess, buffer *buf)
 {
+    // Id
     mess->header.id = ntohs(buffer_pop_u16(buf));
+    // Flags
     dns_deserialize_flags(mess, buf);
+    // Section count
+    mess->header.question_count = ntohs(buffer_pop_u16(buf));
+    mess->header.answer_count = ntohs(buffer_pop_u16(buf));
+    mess->header.authority_count = ntohs(buffer_pop_u16(buf));
+    mess->header.additional_count = ntohs(buffer_pop_u16(buf));
+    
+    // Questions section
+    for(int i=0; i<mess->header.question_count; ++i) {
+        dns_deserialize_label(buf, mess->question.domain);
+    }
+    
+    // Answers section
+    for(int i=0; i<mess->header.answer_count; ++i) {
+        // Check wether record's label is in the compressed format
+        //printf("%x\n", *buf);
+    }
 }
 
 static int create_socket(int *sock, struct sockaddr_in *server_addr)
@@ -93,13 +133,15 @@ static int create_socket(int *sock, struct sockaddr_in *server_addr)
     return 0;
 }
 
-static void send_request(int sock, struct sockaddr_in *server_addr, dns_message *mess)
+static void send_request(int sock, struct sockaddr_in *server_addr,
+                         dns_message *mess)
 {
     // Send request
     buffer req;
     buffer_init(&req, DNS_MESSAGE_MAXLEN);
     dns_serialize(&req, mess);
-    sendto(sock, req.data, req.size, 0, (struct sockaddr *) server_addr, sizeof(*server_addr));
+    sendto(sock, req.data, req.size, 0, (struct sockaddr *) server_addr,
+           sizeof(*server_addr));
     buffer_destroy(&req);
 }
 
