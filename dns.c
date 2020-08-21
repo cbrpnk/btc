@@ -42,7 +42,7 @@ static void add_question(dns_message *mess, char *domain, uint16_t type, uint16_
     //printf("%d aaaa\n", mess->header.question_count);
     mess->questions = realloc(mess->questions, sizeof(struct dns_question));
     uint16_t *id = &mess->header.question_count;
-    strncpy(mess->questions[*id].domain, domain, 255); // TODO Remove magic number
+    strncpy(mess->questions[*id].domain, domain, 256); // TODO Remove magic number
     printf("%s\n", domain);
     mess->questions[*id].type = type;
     mess->questions[*id].dns_class = dns_class;
