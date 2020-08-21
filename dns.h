@@ -30,13 +30,13 @@ struct dns_header {
 };
 
 struct dns_question {
-    char     domain[255];
+    char     domain[256];
     uint16_t type;
     uint16_t dns_class;
 };
 
 struct dns_answer {
-    char     domain[255];
+    char     domain[256];
     uint16_t type;
     uint16_t dns_class;
     uint32_t ttl;
