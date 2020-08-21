@@ -46,11 +46,10 @@ struct dns_answer {
 
 typedef struct dns_message {
     struct dns_header   header;
-    // TODO manke question and answer pointers to allocated mem where and
-    // array of questions and answers are stored. The len of the arrays are
-    // int the header (question_count, answer_count)
-    struct dns_question question;
-    struct dns_answer   answer;
+    struct dns_question *questions;
+    struct dns_answer   *answers;
+    // TODO Autorities section
+    // TODO additionals section
 } dns_message;
 
 typedef struct bitcoin_dns_A_record {
