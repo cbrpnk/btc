@@ -203,13 +203,6 @@ static int create_socket(int *sock, struct sockaddr_in *server_addr)
     server_addr->sin_port = htons(DNS_PORT);
     inet_pton(AF_INET, DEFAULT_GATEWAY, &server_addr->sin_addr);
     
-    // Connect
-    if((connect(*sock, (struct sockaddr *) server_addr,
-            sizeof(*server_addr))) < 0) {
-        printf("Connection Failed\n");
-        return -1;
-    }
-    
     return 0;
 }
 
