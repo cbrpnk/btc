@@ -55,7 +55,7 @@ typedef struct bc_node {
 // Bitcoin special field serialization
 void serialize_string(buffer *buf, const char *str)
 {
-    for(int i=0; i<strlen(str); ++i) {
+    for(size_t i=0; i<strlen(str); ++i) {
         buffer_push_u8(buf, str[i]);
     }
 }
@@ -92,7 +92,7 @@ void serialize_header(bc_node *node, buffer *message, char *cmd)
     buffer_push_u32(message, node->network->magic_number);
     // TODO Test if cmd length is smaller than 12
     // Command
-    for(int i=0; i<strlen(cmd); ++i) {
+    for(size_t i=0; i<strlen(cmd); ++i) {
         buffer_push_u8(message, cmd[i]);
     }
     // Command padding
@@ -173,7 +173,7 @@ int disconnect_from_remote(bc_node *remote)
     return 0;
 }
 
-int main(int argc, char **argv)
+int main()
 {
     /*
     bc_network testnet = {
