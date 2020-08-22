@@ -40,7 +40,7 @@ struct dns_answer {
     uint16_t type;
     uint16_t dns_class;
     uint32_t ttl;
-    uint16_t data_lenght;
+    uint16_t data_length;
     unsigned char *data;
 };
 

@@ -39,11 +39,12 @@ static void destroy_message(dns_message *mess)
 
 static void add_question(dns_message *mess, char *domain, uint16_t type, uint16_t dns_class)
 {
+    //printf("aa%s\n", domain);
     //printf("%d aaaa\n", mess->header.question_count);
-    mess->questions = realloc(mess->questions, sizeof(struct dns_question));
     uint16_t *id = &mess->header.question_count;
-    strncpy(mess->questions[*id].domain, domain, 256); // TODO Remove magic number
-    printf("%s\n", domain);
+    mess->questions = realloc(mess->questions, sizeof(struct dns_question) 
+                              * (*id+1));
+    strcpy(mess->questions[*id].domain, domain); // TODO Remove magic number
     mess->questions[*id].type = type;
     mess->questions[*id].dns_class = dns_class;
     (*id)++;
@@ -88,7 +89,28 @@ static void dns_serialize_label(buffer *buf, char *domain)
         // Required by strok so that it continues to work on the same string
         domain = NULL;
     }
+    // Zero-terminated string
     buffer_push_u8(buf, 0);
+}
+
+static int read_label(char *domain, uint8_t *data) {
+    uint8_t len = 0;
+    int i=0;
+    while(true) {
+        len = data[i++];
+        if(len == 0) break;
+        
+        if(i>1) {
+            *domain++ = '.';
+        }
+        
+        for(int j=0; j<len; ++j) {
+            *domain++ = data[i++];
+        }
+    }
+    *domain++ = '\0';
+    
+    return i;
 }
 
 static void dns_deserialize_label(buffer *buf, char *domain)
@@ -96,23 +118,13 @@ static void dns_deserialize_label(buffer *buf, char *domain)
     // Check wether record's label is in the compressed format.
     // Compressed format starts with 11 as the MSBs
     if(*(buf->data+buf->next) >= 0xc0) {
-        printf("%d\n", buf->next);
         // Compressed
-        uint16_t offset = buffer_pop_u16(buf);
-        //offset &= 0x3;
-        //printf("%d\n", offset);
+        uint16_t offset = ntohs(buffer_pop_u16(buf));
+        offset &= 0x3fff;
+        read_label(domain, buf->data+offset);
     } else {
         // Not compressed
-        uint8_t len = 0;
-        int i=0;
-        while((len = buffer_pop_u8(buf)) != 0) {
-            if(i>0) {
-                domain[i++] = '.';
-            }
-            for(int j=0; j<len; ++j) {
-                domain[i++] = buffer_pop_u8(buf);
-            }
-        }
+        buf->next += read_label(domain, buf->data+buf->next);
     }
 }
 
@@ -152,8 +164,8 @@ static void dns_deserialize(dns_message *mess, buffer *buf)
     // for us.
     uint16_t question_count = ntohs(buffer_pop_u16(buf));
     uint16_t answer_count = ntohs(buffer_pop_u16(buf));
-    uint16_t authority_count = ntohs(buffer_pop_u16(buf));
-    uint16_t additional_count = ntohs(buffer_pop_u16(buf));
+    ntohs(buffer_pop_u16(buf)); // authority_count
+    ntohs(buffer_pop_u16(buf)); // additional_count
     
     // Questions section
     for(int i=0; i<question_count; ++i) {
@@ -161,13 +173,24 @@ static void dns_deserialize(dns_message *mess, buffer *buf)
         dns_deserialize_label(buf, q.domain);
         q.type = ntohs(buffer_pop_u16(buf));
         q.dns_class = ntohs(buffer_pop_u16(buf));
-        add_question(mess, q.domain, q.type, q.dns_class);
     }
     
     // Answers section
     for(int i=0; i<answer_count; ++i) {
         struct dns_answer a;
         dns_deserialize_label(buf, a.domain);
+        a.type = ntohs(buffer_pop_u16(buf));
+        a.dns_class = ntohs(buffer_pop_u16(buf));
+        a.ttl = ntohl(buffer_pop_u32(buf));
+        a.data_length = ntohs(buffer_pop_u16(buf));
+        
+        // TODO Create a buffer function to pop n byte into pointer
+        a.data = malloc(a.data_length);
+        // TODO Endianness
+        memcpy(a.data, buf->data+buf->next, a.data_length);
+        buf->next += a.data_length;
+        printf("domain: %s, ip:%d.%d.%d.%d\n", a.domain, a.data[0], a.data[1],
+                a.data[2], a.data[3]);
     }
 }
 
@@ -209,7 +232,6 @@ static void recv_response(int sock, dns_message *mess)
     buffer_init(&res, DNS_MESSAGE_MAXLEN);
     int read_len = recvfrom(sock, res.data, 512, 0, NULL, NULL);
     res.size += read_len;
-    dump_hex(res.data, res.size);
     dns_deserialize(mess, &res);
     buffer_destroy(&res);
 }

@@ -5,7 +5,7 @@
 
 // Buffer serialization
 typedef struct buffer {
-    unsigned char *data;
+    uint8_t *data;
     // Index of the next byte to write
     unsigned int next;
     size_t size;

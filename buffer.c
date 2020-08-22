@@ -87,17 +87,22 @@ uint16_t buffer_pop_u16(buffer *buf)
 
 uint32_t buffer_pop_u32(buffer *buf)
 {
-    printf("not implemented\n");
-    return 0;
+    uint32_t val = *((uint32_t*) (buf->data + buf->next));
+    buf->next += sizeof(uint32_t);
+    return val;
 }
 
 uint64_t buffer_pop_u64(buffer *buf)
 {
-    printf("not implemented\n");
-    return 0;
+    uint64_t val = *((uint64_t*) (buf->data + buf->next));
+    buf->next += sizeof(uint64_t);
+    return val;
 }
 
 void buffer_pop_string(char *val, size_t *len, buffer *buf)
 {
+    (void) val;
+    (void) len;
+    (void) buf;
     printf("not implemented\n");
 }
