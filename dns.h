@@ -4,12 +4,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "buffer.h"
-
 // TODO this should not be hardcoded
 #define DEFAULT_GATEWAY     "192.168.0.1"
 #define DNS_PORT            53
 #define DNS_MESSAGE_MAXLEN  512
+
+typedef enum dns_record_type {
+    DNS_TYPE_A     = 1,
+    DNS_TYPE_NS    = 2,
+    DNS_TYPE_CNAME = 5,
+    DNS_TYPE_MX    = 15,
+    DNS_TYPE_TXT   = 16,
+    DNS_TYPE_AAAA  = 28,
+} dns_record_type;
 
 struct dns_header {
     // A random nonce used to match answers with questions
@@ -40,23 +47,25 @@ struct dns_answer {
     uint16_t type;
     uint16_t dns_class;
     uint32_t ttl;
-    uint16_t data_length;
+    uint16_t len;
     unsigned char *data;
 };
 
-typedef struct dns_message {
-    struct dns_header   header;
+struct dns_message {
+    struct dns_header    header;
     struct dns_question *questions;
     struct dns_answer   *answers;
     // TODO Autorities section
     // TODO additionals section
-} dns_message;
+};
 
-typedef struct bitcoin_dns_A_record {
-    char                    ip[15];
-} bitcoin_dns_A_record;
+typedef struct dns_record_a {
+    uint32_t ttl;
+    uint8_t  ip[4];
+} dns_record_a;
 
-int dns_get_records(char *domain);
-int test_dns();
+// TODO
+//int dns_get_records(char *domain, dns_record_type type, dns_record_a *out, size_t *len);
+int dns_get_records(char *domain, dns_record_type type);
 
 #endif
