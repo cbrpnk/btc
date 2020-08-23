@@ -46,7 +46,7 @@ typedef struct bc_network {
 typedef struct bc_node {
     bc_network *network;
     uint32_t protocol_version;
-    char ip[15];
+    uint32_t ip;
     uint16_t port;
     int socket;
     bool connected;
@@ -65,7 +65,7 @@ void serialize_port(serial_buffer *buf, uint16_t port)
     serial_buffer_push_u16(buf, htons(port));
 }
 
-void serialize_ipv4(serial_buffer *buf, const char* ipstr)
+void serialize_ipv4(serial_buffer *buf, uint32_t ip)
 {
     // 10 zero bytes
     for(int i=0; i<10; ++i) {
@@ -78,12 +78,7 @@ void serialize_ipv4(serial_buffer *buf, const char* ipstr)
     }
     
     // 4 IPv4 bytes
-    unsigned char addr[4];
-    inet_pton(AF_INET, ipstr, addr);
-    for(int i=0; i<4; ++i) {
-        serial_buffer_push_u8(buf, addr[i]);
-        //serialize_byte(buf, 0x00);
-    }
+    serial_buffer_push_u32(buf, ip);
 }
 
 void serialize_header(bc_node *node, serial_buffer *message, char *cmd)
@@ -124,7 +119,7 @@ int send_version_cmd(bc_node *node)
     serialize_port(&message, node->port);
     // Source address
     serial_buffer_push_u64(&message, 1);
-    serialize_ipv4(&message, "0.0.0.0");
+    serialize_ipv4(&message, 0);
     serialize_port(&message, 0);
     // Random nonce
     serial_buffer_push_u64(&message, gen_nonce_64());
@@ -155,7 +150,7 @@ int connect_to_remote(bc_node *remote)
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(remote->port);
-    inet_pton(AF_INET, remote->ip, &server_addr.sin_addr);
+    memcpy(&server_addr.sin_addr, &remote->ip, sizeof(remote->ip));
     
     if((connect(remote->socket, (struct sockaddr *) &server_addr,
             sizeof(server_addr))) < 0) {
@@ -173,12 +168,29 @@ int disconnect_from_remote(bc_node *remote)
     return 0;
 }
 
+void handshake(bc_node node)
+{
+    send_version_cmd(&node);
+    
+    printf("RECV-------------------------------------------\n");
+    unsigned char message_buffer[2000] = {0};
+    // TODO Custom recv that gets a full message
+    int len = recv(node.socket, message_buffer, 2000, 0);
+    dump_hex(message_buffer, len);
+    printf("END-------------------------------------------\n");
+}
+
 int main()
 {
+    // TODO creat a global bitcoin object and init it
+    // initialization should fetch a bunch of potential client ips 
+    // into a list.
+    // TODO Try to connect to a specified number of ndoes
+    
     // Get a potential ip for a remote node
-    dns_get_records("seed.tbtc.petertodd.org", DNS_TYPE_A);
+    dns_record_a a_rec;
+    dns_get_records_a("seed.tbtc.petertodd.org", &a_rec);
    
-     /*
     bc_network testnet = {
         .magic_number = testnet_magic_number,
         .default_port = testnet_port,
@@ -187,7 +199,7 @@ int main()
     bc_node remote = {
         .network = &testnet,
         .protocol_version = protocol_version,
-        .ip = "50.2.13.165",
+        .ip = a_rec.ip,
         .port = testnet.default_port,
         .socket = 0,
         .connected = false
@@ -197,17 +209,8 @@ int main()
         return -1;
     }
     
-    send_version_cmd(&remote);
-    
-    printf("RECV-------------------------------------------\n\n");
-    unsigned char message_buffer[2000] = {0};
-    int len = recv(remote.socket, message_buffer, 2000, 0);
-    dump_hex(message_buffer, len);
-    printf("RECV-------------------------------------------\n\n");
-    len = recv(remote.socket, message_buffer, 2000, 0);
-    dump_hex(message_buffer, len);
+    handshake(remote);
     
     disconnect_from_remote(&remote);
-    */
     return 0;
 }

@@ -12,7 +12,9 @@
 #include "debug.h"
 #include "serial_buffer.h"
 
-static void create_message(struct dns_message *mess, bool qr, uint8_t opcode, bool aa, bool tc, bool rd, bool ra,
+////////////////////////////////////////// Message ////////////////////////////////////////////////
+
+static void message_init(struct dns_message *mess, bool qr, uint8_t opcode, bool aa, bool tc, bool rd, bool ra,
                            uint8_t rcode)
 {
     mess->header.id = gen_nonce_16();
@@ -32,9 +34,17 @@ static void create_message(struct dns_message *mess, bool qr, uint8_t opcode, bo
     mess->answers = NULL;
 }
 
-static void destroy_message(struct dns_message *mess)
+static void message_destroy(struct dns_message *mess)
 {
+    for(int i=0; i<mess->header.question_count; ++i) {
+        free(mess->questions[i].domain);
+    }
     free(mess->questions);
+    
+    for(int i=0; i<mess->header.answer_count; ++i) {
+        free(mess->answers[i].domain);
+        free(mess->answers[i].data);
+    }
     free(mess->answers);
 }
 
@@ -43,12 +53,14 @@ static void add_question(struct dns_message *mess, char *domain, dns_record_type
     uint16_t *id = &mess->header.question_count;
     mess->questions = realloc(mess->questions, sizeof(struct dns_question) 
                               * (*id+1));
-    strcpy(mess->questions[*id].domain, domain); // TODO Remove magic number
+    mess->questions[*id].domain = malloc(strlen(domain) + 1);
+    strcpy(mess->questions[*id].domain, domain);
     mess->questions[*id].type = type;
     mess->questions[*id].dns_class = dns_class;
     (*id)++;
 }
 
+/////////////////////////////////// Serialization / Deserialization //////////////////////////////////////
 
 static void dns_serialize_flags(serial_buffer *buf, struct dns_message *mess)
 {
@@ -150,46 +162,54 @@ static void dns_serialize(serial_buffer *buf, struct dns_message *mess)
 
 static void dns_deserialize(struct dns_message *mess, serial_buffer *buf)
 {
-    // TODO here create message using new method
-    create_message(mess, 0, 0, 0, 0, 0, 0, 0);
+    message_init(mess, 0, 0, 0, 0, 0, 0, 0);
     
     // Id
     mess->header.id = ntohs(serial_buffer_pop_u16(buf));
     // Flags
     dns_deserialize_flags(mess, buf);
     
-    // We do not fill the "count" section of the header but rather 
-    // let the following add_(question/answer...)() function calls do that 
-    // for us.
-    uint16_t question_count = ntohs(serial_buffer_pop_u16(buf));
-    uint16_t answer_count = ntohs(serial_buffer_pop_u16(buf));
-    ntohs(serial_buffer_pop_u16(buf)); // authority_count
-    ntohs(serial_buffer_pop_u16(buf)); // additional_count
+    mess->header.question_count = ntohs(serial_buffer_pop_u16(buf));
+    mess->header.answer_count = ntohs(serial_buffer_pop_u16(buf));
+    mess->header.authority_count = ntohs(serial_buffer_pop_u16(buf));
+    mess->header.additional_count = ntohs(serial_buffer_pop_u16(buf));
+    
+    // TODO Message init here
     
     // Questions section
-    for(int i=0; i<question_count; ++i) {
-        struct dns_question q;
-        dns_deserialize_label(buf, q.domain);
-        q.type = ntohs(serial_buffer_pop_u16(buf));
-        q.dns_class = ntohs(serial_buffer_pop_u16(buf));
+    mess->questions = malloc(sizeof(struct dns_question) * mess->header.question_count);
+    for(int i=0; i<mess->header.question_count; ++i) {
+        struct dns_question *q = mess->questions+i;
+        char label[256] = {0};
+        dns_deserialize_label(buf, label);
+        q->domain = malloc(strlen(label)+1);
+        strcpy(q->domain, label);
+        q->type = ntohs(serial_buffer_pop_u16(buf));
+        q->dns_class = ntohs(serial_buffer_pop_u16(buf));
     }
     
     // Answers section
-    for(int i=0; i<answer_count; ++i) {
-        struct dns_answer a;
-        dns_deserialize_label(buf, a.domain);
-        a.type = ntohs(serial_buffer_pop_u16(buf));
-        a.dns_class = ntohs(serial_buffer_pop_u16(buf));
-        a.ttl = ntohl(serial_buffer_pop_u32(buf));
-        a.len = ntohs(serial_buffer_pop_u16(buf));
+    mess->answers = malloc(sizeof(struct dns_answer) * mess->header.answer_count);
+    for(int i=0; i<mess->header.answer_count; ++i) {
+        struct dns_answer *a = mess->answers+i;
+        char label[256] = {0};
+        dns_deserialize_label(buf, label);
+        a->domain = malloc(strlen(label)+1);
+        strcpy(a->domain, label);
+        a->type = ntohs(serial_buffer_pop_u16(buf));
+        a->dns_class = ntohs(serial_buffer_pop_u16(buf));
+        a->ttl = ntohl(serial_buffer_pop_u32(buf));
+        a->len = ntohs(serial_buffer_pop_u16(buf));
         
         // TODO Create a buffer function to pop n byte into pointer
-        a.data = malloc(a.len);
+        a->data = malloc(a->len);
         // TODO Endianness
-        memcpy(a.data, buf->data+buf->next, a.len);
-        buf->next += a.len;
+        memcpy(a->data, buf->data+buf->next, a->len);
+        buf->next += a->len;
     }
 }
+
+////////////////////////////// Network ///////////////////////////////////////////////
 
 static int create_socket(int *sock, struct sockaddr_in *server_addr)
 {
@@ -227,7 +247,7 @@ static void recv_response(int sock, struct dns_message *mess)
 }
 
 // TODO Let the user choose the type
-int dns_get_records(char *domain, dns_record_type type)
+static int get_records(char *domain, dns_record_type type, struct dns_message *response)
 {
     int sock = 0;
     struct sockaddr_in server_addr;
@@ -238,18 +258,27 @@ int dns_get_records(char *domain, dns_record_type type)
     
     // Request
     struct dns_message request;
-    create_message(&request, 0, 0, 0, 0, 1, 0, 0);
+    message_init(&request, 0, 0, 0, 0, 1, 0, 0);
     add_question(&request, domain, type, 1);
     send_request(sock, &server_addr, &request);
-    destroy_message(&request);
+    message_destroy(&request);
     
     // Response
-    struct dns_message response;
-    recv_response(sock, &response);
-    destroy_message(&response);
-    
-    // TODO Return records
+    recv_response(sock, response);
     
     close(sock);
     return 0;
 }
+
+/////////////////////////////////////// API ///////////////////////////////////////
+
+int dns_get_records_a(char *domain, dns_record_a *rec)
+{
+    struct dns_message response;
+    get_records(domain, DNS_TYPE_A, &response);
+    rec->ttl = response.answers[0].ttl;
+    rec->ip = *((uint32_t *) response.answers[0].data);
+    message_destroy(&response);
+    return 0;
+}
+

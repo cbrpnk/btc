@@ -37,18 +37,18 @@ struct dns_header {
 };
 
 struct dns_question {
-    char     domain[256];
+    char     *domain;       // Null terminated
     uint16_t type;
     uint16_t dns_class;
 };
 
 struct dns_answer {
-    char     domain[256];
+    char     *domain;       // Null terminated
     uint16_t type;
     uint16_t dns_class;
     uint32_t ttl;
     uint16_t len;
-    unsigned char *data;
+    uint8_t  *data;
 };
 
 struct dns_message {
@@ -61,11 +61,11 @@ struct dns_message {
 
 typedef struct dns_record_a {
     uint32_t ttl;
-    uint8_t  ip[4];
+    uint32_t ip;
 } dns_record_a;
 
 // TODO
 //int dns_get_records(char *domain, dns_record_type type, dns_record_a *out, size_t *len);
-int dns_get_records(char *domain, dns_record_type type);
+int dns_get_records_a(char *domain, dns_record_a *rec);
 
 #endif
