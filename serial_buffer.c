@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "buffer.h"
+#include "serial_buffer.h"
 
-void buffer_init(buffer *buf, size_t size)
+void serial_buffer_init(serial_buffer *buf, size_t size)
 {
     buf->capacity = size;
     buf->data = calloc(buf->capacity, 1);
@@ -11,7 +11,7 @@ void buffer_init(buffer *buf, size_t size)
     buf->size = 0;
 }
 
-void buffer_destroy(buffer *buf)
+void serial_buffer_destroy(serial_buffer *buf)
 {
     buf->capacity = 0;
     free(buf->data);
@@ -20,7 +20,7 @@ void buffer_destroy(buffer *buf)
 }
 
 // Make sur there's at least size free bytes in the buffer
-void buffer_require(buffer *buf, size_t size)
+void serial_buffer_require(serial_buffer *buf, size_t size)
 { 
     if(((int)(buf->capacity - buf->next - size)) <= 0) {
         // Double buffer capacity
@@ -31,75 +31,75 @@ void buffer_require(buffer *buf, size_t size)
     }
 }
 
-void buffer_push_u8(buffer *buf, uint8_t val)
+void serial_buffer_push_u8(serial_buffer *buf, uint8_t val)
 {
-    buffer_require(buf, 1);
+    serial_buffer_require(buf, 1);
     buf->data[buf->next] = val;
     buf->next++;
     if(buf->next > buf->size) buf->size = buf->next;
 }
 
-void buffer_push_u16(buffer *buf, uint16_t val)
+void serial_buffer_push_u16(serial_buffer *buf, uint16_t val)
 {
-    buffer_require(buf, sizeof(uint16_t));
+    serial_buffer_require(buf, sizeof(uint16_t));
     memcpy((uint16_t *) (buf->data + buf->next), &val, sizeof(uint16_t));
     buf->next += sizeof(uint16_t);
     if(buf->next > buf->size) buf->size = buf->next;
 }
 
-void buffer_push_u32(buffer *buf, uint32_t val)
+void serial_buffer_push_u32(serial_buffer *buf, uint32_t val)
 {
-    buffer_require(buf, sizeof(uint32_t));
+    serial_buffer_require(buf, sizeof(uint32_t));
     memcpy((uint32_t *) (buf->data + buf->next), &val, sizeof(uint32_t));
     buf->next += sizeof(uint32_t);
     if(buf->next > buf->size) buf->size = buf->next;
 }
 
-void buffer_push_u64(buffer *buf, uint64_t val)
+void serial_buffer_push_u64(serial_buffer *buf, uint64_t val)
 {
-    buffer_require(buf, sizeof(uint64_t));
+    serial_buffer_require(buf, sizeof(uint64_t));
     memcpy((uint64_t *) (buf->data + buf->next), &val, sizeof(uint64_t));
     buf->next += sizeof(uint64_t);
     if(buf->next > buf->size) buf->size = buf->next;
 }
 
-void buffer_push_string(buffer *buf, char *val, size_t len)
+void serial_buffer_push_string(serial_buffer *buf, char *val, size_t len)
 {
-    buffer_require(buf, len);
+    serial_buffer_require(buf, len);
     memcpy((buf->data + buf->next), val, len);
     buf->next += len;
     if(buf->next > buf->size) buf->size = buf->next;
 }
 
-uint8_t buffer_pop_u8(buffer *buf)
+uint8_t serial_buffer_pop_u8(serial_buffer *buf)
 {
     uint8_t val = *((uint8_t*) (buf->data + buf->next));
     buf->next += sizeof(uint8_t);
     return val;
 }
 
-uint16_t buffer_pop_u16(buffer *buf)
+uint16_t serial_buffer_pop_u16(serial_buffer *buf)
 {
     uint16_t val = *((uint16_t*) (buf->data + buf->next));
     buf->next += sizeof(uint16_t);
     return val;
 }
 
-uint32_t buffer_pop_u32(buffer *buf)
+uint32_t serial_buffer_pop_u32(serial_buffer *buf)
 {
     uint32_t val = *((uint32_t*) (buf->data + buf->next));
     buf->next += sizeof(uint32_t);
     return val;
 }
 
-uint64_t buffer_pop_u64(buffer *buf)
+uint64_t serial_buffer_pop_u64(serial_buffer *buf)
 {
     uint64_t val = *((uint64_t*) (buf->data + buf->next));
     buf->next += sizeof(uint64_t);
     return val;
 }
 
-void buffer_pop_string(char *val, size_t *len, buffer *buf)
+void serial_buffer_pop_string(char *val, size_t *len, serial_buffer *buf)
 {
     (void) val;
     (void) len;
