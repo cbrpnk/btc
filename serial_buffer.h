@@ -20,13 +20,13 @@ void serial_buffer_push_u8(serial_buffer *buf, uint8_t val);
 void serial_buffer_push_u16(serial_buffer *buf, uint16_t val);
 void serial_buffer_push_u32(serial_buffer *buf, uint32_t val);
 void serial_buffer_push_u64(serial_buffer *buf, uint64_t val);
-void serial_buffer_push_string(serial_buffer *buf, char *val, size_t len);
+void serial_buffer_push_mem(serial_buffer *buf, char *val, size_t len);
 
 uint8_t  serial_buffer_pop_u8(serial_buffer *buf);
 uint16_t serial_buffer_pop_u16(serial_buffer *buf);
 uint32_t serial_buffer_pop_u32(serial_buffer *buf);
 uint64_t serial_buffer_pop_u64(serial_buffer *buf);
-void     serial_buffer_pop_string(char *val, size_t *len, serial_buffer *buf);
+void     serial_buffer_pop_mem(void *val, size_t len, serial_buffer *buf);
 
 
 #endif
