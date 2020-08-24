@@ -251,13 +251,13 @@ static void send_request(int sock, struct sockaddr_in *server_addr,
 
 static void recv_response(int sock, struct dns_message *mess)
 {
+    // TODO Recv full dns_message
     // Receive response
     serial_buffer res;
     serial_buffer_init(&res, DNS_MESSAGE_MAXLEN);
     int read_len = recvfrom(sock, res.data, 512, 0, NULL, NULL);
     res.size += read_len;
     dns_deserialize(mess, &res);
-    // TODO Check if the nonce matches our request
     serial_buffer_destroy(&res);
 }
 
@@ -273,7 +273,9 @@ int dns_query(dns_message *req, dns_message *res)
     }
     
     send_request(sock, &server_addr, req);
-    recv_response(sock, res);
+    do {
+        recv_response(sock, res);
+    } while(req->header.id != res->header.id);
     
     close(sock);
     return 0;
