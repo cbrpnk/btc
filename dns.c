@@ -12,10 +12,10 @@
 #include "debug.h"
 #include "serial_buffer.h"
 
-////////////////////////////////////////// Message ////////////////////////////////////////////////
+///////////////////////////////// Message /////////////////////////////////////
 
-static void message_init(struct dns_message *mess, bool qr, uint8_t opcode, bool aa, bool tc, bool rd, bool ra,
-                           uint8_t rcode)
+static void message_init(struct dns_message *mess, bool qr, uint8_t opcode,
+                         bool aa, bool tc, bool rd, bool ra, uint8_t rcode)
 {
     mess->header.id = gen_nonce_16();
     mess->header.qr = qr;
@@ -48,8 +48,8 @@ static void message_destroy(struct dns_message *mess)
     free(mess->answers);
 }
 
-static dns_question *add_question(struct dns_message *mess, char *domain, dns_record_type type,
-                                  uint16_t dns_class)
+static dns_question *add_question(struct dns_message *mess, char *domain,
+                                  dns_record_type type, uint16_t dns_class)
 {
     uint16_t *question_count = &mess->header.question_count;
     mess->questions = realloc(mess->questions, sizeof(struct dns_question) 
@@ -68,15 +68,18 @@ static dns_question *add_question(struct dns_message *mess, char *domain, dns_re
     return q;
 }
 
-/*
 static dns_answer *add_answer(struct dns_message *mess)
 {
-    // TODO
-    return NULL;
+    uint16_t *answer_count = &mess->header.answer_count;
+    mess->answers = realloc(mess->answers, sizeof(struct dns_answer) 
+                              * (*answer_count+1));
+    dns_answer *a = &mess->answers[*answer_count];
+    memset(a, 0, sizeof(dns_answer));
+    (*answer_count)++;
+    return a;
 }
-*/
 
-/////////////////////////////////// Serialization / Deserialization //////////////////////////////////////
+///////////////////// Serialization / Deserialization ///////////////////////
 
 static void dns_serialize_flags(serial_buffer *buf, struct dns_message *mess)
 {
@@ -185,15 +188,15 @@ static void dns_deserialize(struct dns_message *mess, serial_buffer *buf)
     // Flags
     dns_deserialize_flags(mess, buf);
     
+    // We do not populate the header "count" section, the add_question
+    // and add_answer functions below will do that job
     uint16_t question_count = ntohs(serial_buffer_pop_u16(buf));
     uint16_t answer_count = ntohs(serial_buffer_pop_u16(buf));
     mess->header.authority_count = ntohs(serial_buffer_pop_u16(buf));
     mess->header.additional_count = ntohs(serial_buffer_pop_u16(buf));
     
     // Questions section
-    mess->questions = malloc(sizeof(struct dns_question) * mess->header.question_count);
     for(int i=0; i<question_count; ++i) {
-        // TODO Add_question is buggy
         dns_question *q = add_question(mess, NULL, DNS_TYPE_NULL, 0);
         char label[256] = {0};
         dns_deserialize_label(buf, label);
@@ -204,9 +207,9 @@ static void dns_deserialize(struct dns_message *mess, serial_buffer *buf)
     }
     
     // Answers section
-    mess->answers = malloc(sizeof(struct dns_answer) * mess->header.answer_count);
+    //mess->answers = malloc(sizeof(struct dns_answer) * answer_count);
     for(int i=0; i<answer_count; ++i) {
-        struct dns_answer *a = mess->answers+i;
+        dns_answer *a = add_answer(mess);
         char label[256] = {0};
         dns_deserialize_label(buf, label);
         a->domain = malloc(strlen(label)+1);
@@ -220,7 +223,7 @@ static void dns_deserialize(struct dns_message *mess, serial_buffer *buf)
     }
 }
 
-////////////////////////////// Network ///////////////////////////////////////////////
+////////////////////////////// Network ////////////////////////////////////
 
 static int create_socket(int *sock, struct sockaddr_in *server_addr)
 {
@@ -276,7 +279,8 @@ int dns_query(dns_message *req, dns_message *res)
     return 0;
 }
 
-int dns_get_records(char *domain, dns_record_type type, struct dns_message *response)
+int dns_get_records(char *domain, dns_record_type type,
+                    struct dns_message *response)
 {
     dns_message request;
     message_init(&request, 0, 0, 0, 0, 1, 0, 0);
