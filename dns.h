@@ -56,8 +56,8 @@ typedef struct dns_message {
     struct dns_header    header;
     struct dns_question *questions;
     struct dns_answer   *answers;
-    // TODO Autorities section
-    // TODO additionals section
+    // TODO Autorities section (not implemented)
+    // TODO additionals section (not implemented)
 } dns_message;
 
 typedef struct dns_record_a {
