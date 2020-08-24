@@ -63,7 +63,7 @@ void serial_buffer_push_u64(serial_buffer *buf, uint64_t val)
     if(buf->next > buf->size) buf->size = buf->next;
 }
 
-void serial_buffer_push_string(serial_buffer *buf, char *val, size_t len)
+void serial_buffer_push_mem(serial_buffer *buf, char *val, size_t len)
 {
     serial_buffer_require(buf, len);
     memcpy((buf->data + buf->next), val, len);
@@ -99,10 +99,8 @@ uint64_t serial_buffer_pop_u64(serial_buffer *buf)
     return val;
 }
 
-void serial_buffer_pop_string(char *val, size_t *len, serial_buffer *buf)
+void serial_buffer_pop_mem(void *val, size_t len, serial_buffer *buf)
 {
-    (void) val;
-    (void) len;
-    (void) buf;
-    printf("not implemented\n");
+    memcpy(val, buf->data + buf->next, len);
+    buf->next += len;
 }

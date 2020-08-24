@@ -10,6 +10,7 @@
 #define DNS_MESSAGE_MAXLEN  512
 
 typedef enum dns_record_type {
+    DNS_TYPE_NULL  = 0,
     DNS_TYPE_A     = 1,
     DNS_TYPE_NS    = 2,
     DNS_TYPE_CNAME = 5,
@@ -18,7 +19,7 @@ typedef enum dns_record_type {
     DNS_TYPE_AAAA  = 28,
 } dns_record_type;
 
-struct dns_header {
+typedef struct dns_header {
     // A random nonce used to match answers with questions
     uint16_t id;
     // Flags
@@ -34,38 +35,38 @@ struct dns_header {
     uint16_t answer_count;
     uint16_t authority_count;
     uint16_t additional_count;
-};
+} dns_header;
 
-struct dns_question {
+typedef struct dns_question {
     char     *domain;       // Null terminated
     uint16_t type;
     uint16_t dns_class;
-};
+} dns_question;
 
-struct dns_answer {
+typedef struct dns_answer {
     char     *domain;       // Null terminated
     uint16_t type;
     uint16_t dns_class;
     uint32_t ttl;
     uint16_t len;
     uint8_t  *data;
-};
+} dns_answer;
 
-struct dns_message {
+typedef struct dns_message {
     struct dns_header    header;
     struct dns_question *questions;
     struct dns_answer   *answers;
     // TODO Autorities section
     // TODO additionals section
-};
+} dns_message;
 
 typedef struct dns_record_a {
     uint32_t ttl;
     uint32_t ip;
 } dns_record_a;
 
-// TODO
-//int dns_get_records(char *domain, dns_record_type type, dns_record_a *out, size_t *len);
+int dns_query(dns_message *req, dns_message *res);
+int dns_get_records(char *domain, dns_record_type type, struct dns_message *response);
 int dns_get_records_a(char *domain, dns_record_a *rec);
 
 #endif
