@@ -26,18 +26,6 @@ const size_t message_header_len = 24;
 const uint32_t testnet_magic_number = 0x0709110b;
 const uint16_t testnet_port = 18333;
 
-/*
-typedef struct bc_socket {
-    char ip[15];
-    uint16_t port;
-    int id;
-} bc_socket;
-
-typedef struct bc_connection {
-    bc_network *network;
-} bc_connection;
-*/
-
 typedef struct bc_network {
     uint32_t magic_number;
     uint16_t default_port;
