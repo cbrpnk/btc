@@ -9,12 +9,13 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "node.h"
+#include "network.h"
 #include "crypto.h"
 #include "serial_buffer.h"
 #include "dns.h"
 #include "debug.h"
 
-// TODO Implement dns based seeding
 // Testnet seed dns
 // seed.tbtc.petertodd.org
 // testnet-seed.bitcoin.jonasschnelli.ch
@@ -22,23 +23,6 @@
 const uint32_t protocol_version = 70015;
 const char *user_agent = "/test:0.0.1/";
 const size_t message_header_len = 24;
-// Testnet
-const uint32_t testnet_magic_number = 0x0709110b;
-const uint16_t testnet_port = 18333;
-
-typedef struct bc_network {
-    uint32_t magic_number;
-    uint16_t default_port;
-} bc_network;
-
-typedef struct bc_node {
-    bc_network *network;
-    uint32_t protocol_version;
-    uint32_t ip;
-    uint16_t port;
-    int socket;
-    bool connected;
-} bc_node;
 
 // Bitcoin special field serialization
 void serialize_string(serial_buffer *buf, const char *str)
