@@ -68,7 +68,10 @@ void serialize_header(bc_node *node, serial_buffer *message, char *cmd)
     size_t payload_len = message->size - message_header_len;
     serial_buffer_push_u32(message, payload_len);
     // Checksum
-    serial_buffer_push_u32(message, gen_checksum(message->data+message_header_len, payload_len));
+    serial_buffer_push_u32(
+        message,
+        gen_checksum(message->data+message_header_len,payload_len)
+    );
 }
 
 int send_version_cmd(bc_node *node)
