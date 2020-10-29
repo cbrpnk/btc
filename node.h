@@ -1,6 +1,9 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include <stdio.h>
+#include <stdbool.h>
+
 typedef struct bc_network bc_network;
 
 typedef struct bc_node {
@@ -11,5 +14,9 @@ typedef struct bc_node {
     int socket;
     bool connected;
 } bc_node;
+
+int connect_to_remote(bc_node *remote);
+int disconnect_from_remote(bc_node *remote);
+void handshake(bc_node *node);
 
 #endif

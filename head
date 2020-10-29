@@ -1,0 +1,109 @@
+node.c: In function ‘handshake’:
+node.c:44:26: error: missing braces around initializer [-Werror=missing-braces]
+   44 |     bc_msg_version msg = {
+      |                          ^
+......
+   51 |             .ip = node->ip,
+      |                   {       }
+node.c:44:26: error: missing braces around initializer [-Werror=missing-braces]
+   44 |     bc_msg_version msg = {
+      |                          ^
+......
+   51 |             .ip = node->ip,
+      |                   {       }
+......
+   57 |             .ip = 0,
+      |                   {}
+node.c:54:17: error: initialized field overwritten [-Werror=override-init]
+   54 |         .dest = {
+      |                 ^
+node.c:54:17: note: (near initialization for ‘msg.dest’)
+node.c:60:18: error: implicit declaration of function ‘get_nonce_64’; did you mean ‘gen_nonce_64’? [-Werror=implicit-function-declaration]
+   60 |         .nonce = get_nonce_64(),
+      |                  ^~~~~~~~~~~~
+      |                  gen_nonce_64
+node.c:62:9: error: request for member ‘start_height’ in something not a structure or union
+   62 |         .start_height = 0,
+      |         ^
+node.c:44:26: error: missing braces around initializer [-Werror=missing-braces]
+   44 |     bc_msg_version msg = {
+      |                          ^
+......
+   51 |             .ip = node->ip,
+      |                   {       }
+......
+   57 |             .ip = 0,
+      |                   {}
+node.c:72:24: error: ‘node’ is a pointer; did you mean to use ‘->’?
+   72 |     int len = recv(node.socket, message_buffer, 2000, 0);
+      |                        ^
+      |                        ->
+cc1: all warnings being treated as errors
+proto.c: In function ‘serialize_port’:
+proto.c:15:33: error: implicit declaration of function ‘htons’ [-Werror=implicit-function-declaration]
+   15 |     serial_buffer_push_u16(buf, htons(port));
+      |                                 ^~~~~
+proto.c: In function ‘serialize_header’:
+proto.c:37:50: error: invalid use of incomplete typedef ‘bc_network’
+   37 |     serial_buffer_push_u32(message, node->network->magic_number);
+      |                                                  ^~
+proto.c:46:42: error: ‘message_header_len’ undeclared (first use in this function)
+   46 |     size_t payload_len = message->size - message_header_len;
+      |                                          ^~~~~~~~~~~~~~~~~~
+proto.c:46:42: note: each undeclared identifier is reported only once for each function it appears in
+proto.c:51:9: error: implicit declaration of function ‘gen_checksum’ [-Werror=implicit-function-declaration]
+   51 |         gen_checksum(message->data+message_header_len,payload_len)
+      |         ^~~~~~~~~~~~
+proto.c: In function ‘send_version’:
+proto.c:68:39: error: passing argument 2 of ‘serialize_ipv4’ makes integer from pointer without a cast [-Werror=int-conversion]
+   68 |     serialize_ipv4(&message, msg->dest.ip);
+      |                              ~~~~~~~~~^~~
+      |                                       |
+      |                                       char *
+proto.c:18:57: note: expected ‘uint32_t’ {aka ‘unsigned int’} but argument is of type ‘char *’
+   18 | static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
+      |                                                ~~~~~~~~~^~
+proto.c:71:38: error: passing argument 2 of ‘serialize_ipv4’ makes integer from pointer without a cast [-Werror=int-conversion]
+   71 |     serialize_ipv4(&message, msg->src.ip);
+      |                              ~~~~~~~~^~~
+      |                                      |
+      |                                      char *
+proto.c:18:57: note: expected ‘uint32_t’ {aka ‘unsigned int’} but argument is of type ‘char *’
+   18 | static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
+      |                                                ~~~~~~~~~^~
+proto.c:83:24: error: incompatible type for argument 2 of ‘send_message’
+   83 |     send_message(node, message);
+      |                        ^~~~~~~
+      |                        |
+      |                        serial_buffer
+In file included from proto.c:3:
+proto.h:41:49: note: expected ‘serial_buffer *’ but argument is of type ‘serial_buffer’
+   41 | void send_message(bc_node *node, serial_buffer *msg);
+      |                                  ~~~~~~~~~~~~~~~^~~
+proto.c: In function ‘send_message’:
+proto.c:89:5: error: implicit declaration of function ‘send’ [-Werror=implicit-function-declaration]
+   89 |     send(node->socket, message.data, message.size, 0);
+      |     ^~~~
+proto.c:89:24: error: ‘message’ undeclared (first use in this function)
+   89 |     send(node->socket, message.data, message.size, 0);
+      |                        ^~~~~~~
+proto.c:87:49: error: unused parameter ‘msg’ [-Werror=unused-parameter]
+   87 | void send_message(bc_node *node, serial_buffer *msg)
+      |                                  ~~~~~~~~~~~~~~~^~~
+cc1: all warnings being treated as errors
+main.c: In function ‘send_version_cmd’:
+main.c:76:31: error: unused parameter ‘node’ [-Werror=unused-parameter]
+   76 | int send_version_cmd(bc_node *node)
+      |                      ~~~~~~~~~^~~~
+main.c: In function ‘main’:
+main.c:148:15: error: incompatible type for argument 1 of ‘handshake’
+  148 |     handshake(remote);
+      |               ^~~~~~
+      |               |
+      |               bc_node
+In file included from main.c:8:
+node.h:20:25: note: expected ‘bc_node *’ but argument is of type ‘bc_node’
+   20 | void handshake(bc_node *node);
+      |                ~~~~~~~~~^~~~
+cc1: all warnings being treated as errors
+make: *** [Makefile:2: default] Error 1
