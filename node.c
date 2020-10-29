@@ -11,7 +11,7 @@
 #include "debug.h"
 #include "network.h"
 
-int connect_to_remote(bc_node *remote)
+int bc_node_connect(bc_node *remote)
 {
     if((remote->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         printf("Socket creation error\n");
@@ -33,13 +33,13 @@ int connect_to_remote(bc_node *remote)
     return 0;
 }
 
-int disconnect_from_remote(bc_node *remote)
+int bc_node_disconnect(bc_node *remote)
 {
     close(remote->socket);
     return 0;
 }
 
-void handshake(bc_node *node)
+void bc_node_handshake(bc_node *node)
 {
     bc_msg_version msg = {
         .version = node->protocol_version,

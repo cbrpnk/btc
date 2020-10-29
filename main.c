@@ -45,12 +45,12 @@ int main()
         .connected = false
     };
     
-    if(connect_to_remote(&remote) < 0) {
+    if(bc_node_connect(&remote) < 0) {
         return -1;
     }
     
-    handshake(&remote);
+    bc_node_handshake(&remote);
     
-    disconnect_from_remote(&remote);
+    bc_node_disconnect(&remote);
     return 0;
 }

@@ -15,8 +15,8 @@ typedef struct bc_node {
     bool connected;
 } bc_node;
 
-int connect_to_remote(bc_node *remote);
-int disconnect_from_remote(bc_node *remote);
-void handshake(bc_node *node);
+int bc_node_connect(bc_node *remote);
+int bc_node_disconnect(bc_node *remote);
+void bc_node_handshake(bc_node *node);
 
 #endif
