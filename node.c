@@ -9,7 +9,6 @@
 #include "node.h"
 #include "crypto.h"
 #include "debug.h"
-#include "network.h"
 
 int bc_node_connect(bc_node *remote)
 {
@@ -64,7 +63,6 @@ void bc_node_handshake(bc_node *node)
     };
     
     bc_proto_send_version(node, &msg);
-    
     
     printf("RECV-------------------------------------------\n");
     unsigned char message_buffer[2000] = {0};

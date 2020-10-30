@@ -1,0 +1,6 @@
+-[ ] Pull node out of proto, use a custom socket wrapper layer
+-[ ] Have the dns system use bc_socket wrapper
+-[ ] remove dependency to htons... family of functions
+-[ ] Investigate bug where we don't get the whole message
+-[ ] Remove debug, and add a to_string() for every message
+-[ ] Have a network type that manages nodes

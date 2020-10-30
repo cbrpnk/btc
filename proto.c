@@ -5,7 +5,6 @@
 // layer
 #include <arpa/inet.h>
 
-#include "network.h"
 #include "crypto.h"
 #include "proto.h"
 
@@ -41,7 +40,7 @@ static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
 static void serialize_header(bc_node *node, serial_buffer *message, char *cmd)
 {
     // Magic number for testnet
-    serial_buffer_push_u32(message, node->network->magic_number);
+    serial_buffer_push_u32(message, node->magic_number);
     // TODO Test if cmd length is smaller than 12
     // Command
     for(size_t i=0; i<strlen(cmd); ++i) {

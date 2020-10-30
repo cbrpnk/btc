@@ -7,7 +7,7 @@
 typedef struct bc_network bc_network;
 
 typedef struct bc_node {
-    bc_network *network;
+    uint32_t magic_number;
     uint32_t protocol_version;
     uint32_t ip;
     uint16_t port;

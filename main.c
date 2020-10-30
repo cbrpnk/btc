@@ -6,7 +6,6 @@
 #include <stdbool.h>
 
 #include "node.h"
-#include "network.h"
 #include "proto.h"
 #include "crypto.h"
 #include "serial_buffer.h"
@@ -16,6 +15,9 @@
 // Testnet seed dns
 // seed.tbtc.petertodd.org
 // testnet-seed.bitcoin.jonasschnelli.ch
+
+#define TESTNET_MAGIC_NUMBER 0x0709110b
+#define TESTNET_DEFAULT_PORT 18333
 
 const uint32_t protocol_version = 70015;
 const char *user_agent = "/test:0.0.1/";
@@ -31,16 +33,11 @@ int main()
     dns_record_a a_rec;
     dns_get_records_a("seed.tbtc.petertodd.org", &a_rec);
    
-    bc_network testnet = {
-        .magic_number = testnet_magic_number,
-        .default_port = testnet_port,
-    };
-    
     bc_node remote = {
-        .network = &testnet,
+        .magic_number = TESTNET_MAGIC_NUMBER,
         .protocol_version = protocol_version,
         .ip = a_rec.ip,
-        .port = testnet.default_port,
+        .port = TESTNET_DEFAULT_PORT,
         .socket = 0,
         .connected = false
     };
