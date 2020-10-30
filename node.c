@@ -63,7 +63,7 @@ void bc_node_handshake(bc_node *node)
         .relay = 1
     };
     
-    send_version(node, &msg);
+    bc_proto_send_version(node, &msg);
     
     
     printf("RECV-------------------------------------------\n");

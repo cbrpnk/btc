@@ -37,7 +37,7 @@ typedef struct bc_msg_version {
     bool        relay;
 } bc_msg_version;
 
-void send_version(bc_node *node, bc_msg_version *msg);
-void send_message(bc_node *node, serial_buffer *msg);
+void bc_proto_send_version(bc_node *node, bc_msg_version *msg);
+void bc_proto_send_message(bc_node *node, serial_buffer *msg);
 
 #endif

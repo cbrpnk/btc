@@ -59,7 +59,7 @@ static void serialize_header(bc_node *node, serial_buffer *message, char *cmd)
     );
 }
 
-void send_version(bc_node *node, bc_msg_version *msg)
+void bc_proto_send_version(bc_node *node, bc_msg_version *msg)
 {
     // Serialize msg
     serial_buffer message;
@@ -87,11 +87,11 @@ void send_version(bc_node *node, bc_msg_version *msg)
     message.next = 0;;
     serialize_header(node, &message, "version");
     
-    send_message(node, &message);
+    bc_proto_send_message(node, &message);
     serial_buffer_destroy(&message);
 }
 
-void send_message(bc_node *node, serial_buffer *msg)
+void bc_proto_send_message(bc_node *node, serial_buffer *msg)
 {
     send(node->socket, msg->data, msg->size, 0);
 }
