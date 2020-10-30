@@ -1,7 +1,7 @@
 #ifndef NODE_H
 #define NODE_H
 
-#include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 typedef struct bc_network bc_network;
