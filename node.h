@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "socket.h"
 
 typedef struct bc_network bc_network;
 
@@ -11,8 +12,9 @@ typedef struct bc_node {
     uint32_t protocol_version;
     uint32_t ip;
     uint16_t port;
-    int socket;
-    bool connected;
+    //int socket;
+    //bool connected;
+    bc_socket socket;
 } bc_node;
 
 int bc_node_connect(bc_node *remote);

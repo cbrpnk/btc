@@ -92,5 +92,5 @@ void bc_proto_send_version(bc_node *node, bc_msg_version *msg)
 
 void bc_proto_send_message(bc_node *node, serial_buffer *msg)
 {
-    send(node->socket, msg->data, msg->size, 0);
+    bc_socket_send(&node->socket, msg->data, msg->size);
 }

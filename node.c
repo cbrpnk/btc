@@ -1,9 +1,4 @@
 #include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <unistd.h>
 #include <time.h>
 
 #include "proto.h"
@@ -13,29 +8,13 @@
 
 int bc_node_connect(bc_node *remote)
 {
-    if((remote->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-        printf("Socket creation error\n");
-        return -1;
-    }
-    
-    struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(remote->port);
-    memcpy(&server_addr.sin_addr, &remote->ip, sizeof(remote->ip));
-    
-    if((connect(remote->socket, (struct sockaddr *) &server_addr,
-            sizeof(server_addr))) < 0) {
-        printf("Connection Failed\n");
-        return -1;
-    }
-    
-    remote->connected = true;
+    bc_socket_connect(&remote->socket, remote->ip, remote->port);
     return 0;
 }
 
 int bc_node_disconnect(bc_node *remote)
 {
-    close(remote->socket);
+    bc_socket_disconnect(&remote->socket);
     return 0;
 }
 
@@ -68,7 +47,7 @@ void bc_node_handshake(bc_node *node)
     printf("RECV-------------------------------------------\n");
     unsigned char message_buffer[2000] = {0};
     // TODO Custom recv that gets a full message
-    int len = recv(node->socket, message_buffer, 2000, 0);
+    int len = bc_socket_recv(&node->socket, message_buffer, 2000);
     dump_hex(message_buffer, len);
     printf("END-------------------------------------------\n");
 }

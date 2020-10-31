@@ -33,8 +33,7 @@ int main()
         .protocol_version = protocol_version,
         .ip = a_rec.ip,
         .port = TESTNET_DEFAULT_PORT,
-        .socket = 0,
-        .connected = false
+        .socket = {0},
     };
     
     if(bc_node_connect(&remote) < 0) {
