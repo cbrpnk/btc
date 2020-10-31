@@ -1,12 +1,25 @@
 #include <string.h>
-
-// TODO: This is for htons
-// Should be abstracted awayt in the network
-// layer
-#include <arpa/inet.h>
+#include <stdint.h>
 
 #include "crypto.h"
 #include "proto.h"
+
+inline static uint16_t switch_endian_16(uint16_t val)
+{
+    return (((val & 0xff) << 8) | ((val & 0xff00) >> 8));
+}
+
+/*
+static uint32_t switch_endian_32(uint32_t val)
+{
+    
+}
+
+static uint64_t switch_endian_64(uint64_t val)
+{
+    
+}
+*/
 
 // Bitcoin special field serialization
 static void serialize_string(serial_buffer *buf, const char *str)
@@ -18,7 +31,7 @@ static void serialize_string(serial_buffer *buf, const char *str)
 
 static void serialize_port(serial_buffer *buf, uint16_t port)
 {
-    serial_buffer_push_u16(buf, htons(port));
+    serial_buffer_push_u16(buf, switch_endian_16(port));
 }
 
 static void serialize_ipv4(serial_buffer *buf, uint32_t ip)

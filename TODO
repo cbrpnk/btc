@@ -1,6 +1,9 @@
--[ ] Pull node out of proto, use a custom socket wrapper layer
+-[x] Pull node out of proto, use a custom socket wrapper layer
 -[ ] Have the dns system use bc_socket wrapper
--[ ] remove dependency to htons... family of functions
+-[x] remove dependency to htons... family of functions [ DOING ]
+-[ ] Implement swithc_endian32 and 64
 -[ ] Investigate bug where we don't get the whole message
 -[ ] Remove debug, and add a to_string() for every message
 -[ ] Have a network type that manages nodes
+-[ ] Create a config struct that includes magic numbers and such
+-[ ] Make ips human readable up until it is used in sockets
