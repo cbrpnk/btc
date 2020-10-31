@@ -37,10 +37,10 @@ static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
     serial_buffer_push_u32(buf, ip);
 }
 
-static void serialize_header(bc_node *node, serial_buffer *message, char *cmd)
+static void serialize_header(serial_buffer *message, char *cmd)
 {
     // Magic number for testnet
-    serial_buffer_push_u32(message, node->magic_number);
+    serial_buffer_push_u32(message, 0x0709110b); // TODO Pull that from config
     // TODO Test if cmd length is smaller than 12
     // Command
     for(size_t i=0; i<strlen(cmd); ++i) {
@@ -58,7 +58,7 @@ static void serialize_header(bc_node *node, serial_buffer *message, char *cmd)
     );
 }
 
-void bc_proto_send_version(bc_node *node, bc_msg_version *msg)
+void bc_proto_send_version(bc_socket *socket, bc_msg_version *msg)
 {
     // Serialize msg
     serial_buffer message;
@@ -83,14 +83,14 @@ void bc_proto_send_version(bc_node *node, bc_msg_version *msg)
     serial_buffer_push_u8(&message, msg->relay);
     
     // Reset write head
-    message.next = 0;;
-    serialize_header(node, &message, "version");
+    message.next = 0;
+    serialize_header(&message, "version");
     
-    bc_proto_send_message(node, &message);
+    bc_proto_send_message(socket, &message);
     serial_buffer_destroy(&message);
 }
 
-void bc_proto_send_message(bc_node *node, serial_buffer *msg)
+void bc_proto_send_message(bc_socket *socket, serial_buffer *msg)
 {
-    bc_socket_send(&node->socket, msg->data, msg->size);
+    bc_socket_send(socket, msg->data, msg->size);
 }

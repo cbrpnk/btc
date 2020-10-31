@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 #include "serial_buffer.h"
-#include "node.h"
+#include "socket.h"
 
 #define MESSAGE_HEADER_LEN 24
 
@@ -37,7 +37,7 @@ typedef struct bc_msg_version {
     bool        relay;
 } bc_msg_version;
 
-void bc_proto_send_version(bc_node *node, bc_msg_version *msg);
-void bc_proto_send_message(bc_node *node, serial_buffer *msg);
+void bc_proto_send_version(bc_socket *socket, bc_msg_version *msg);
+void bc_proto_send_message(bc_socket *socket, serial_buffer *msg);
 
 #endif
