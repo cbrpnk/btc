@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "crypto.h"
 #include "proto.h"
@@ -86,8 +87,18 @@ static void serialize_header(serial_buffer *message, char *cmd)
     );
 }
 
-#include <stdio.h>
-void bc_proto_send_version(bc_socket *socket, bc_msg_version *msg)
+void bc_proto_net_addr_print(bc_proto_net_addr *n)
+{
+    printf("{Time: %d, Services: %ld, Ip: %ld, Port: %hd}",
+            n->time, n->services, n->ip, n->port);
+}
+
+void bc_proto_send(bc_socket *socket, serial_buffer *msg)
+{
+    bc_socket_send(socket, msg->data, msg->size);
+}
+
+void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
 {
     // Serialize msg
     serial_buffer message;
@@ -115,11 +126,20 @@ void bc_proto_send_version(bc_socket *socket, bc_msg_version *msg)
     message.next = 0;
     serialize_header(&message, "version");
     
-    bc_proto_send_message(socket, &message);
+    bc_proto_send(socket, &message);
     serial_buffer_destroy(&message);
 }
 
-void bc_proto_send_message(bc_socket *socket, serial_buffer *msg)
+void bc_proto_version_print(bc_msg_version *msg)
 {
-    bc_socket_send(socket, msg->data, msg->size);
+    printf("VERSION {\n\tVersion: %d,\n\tServices: %ld,\n\tTimestamp: %ld\n",
+            msg->version, msg->services, msg->timestamp);
+    printf("\tDest: ");
+    bc_proto_net_addr_print(&msg->dest);
+    printf("\n\tSrc: ");
+    bc_proto_net_addr_print(&msg->src);
+    printf("\n\tNonce: %ld,\n\tUser-Agent: %s\n\tStart height: %d,\n"
+           "\tRelay: %d,\n};\n",
+            msg->nonce, msg->user_agent, msg->start_height, msg->relay);
 }
+

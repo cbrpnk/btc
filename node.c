@@ -43,7 +43,8 @@ void bc_node_handshake(bc_node *node)
         .relay = 1
     };
     
-    bc_proto_send_version(&node->socket, &msg);
+    bc_proto_version_print(&msg);
+    bc_proto_version_send(&node->socket, &msg);
     
     printf("RECV-------------------------------------------\n");
     unsigned char message_buffer[2000] = {0};
