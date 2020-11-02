@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "dns.h"
+#include "socket.h"
 #include "crypto.h"
 #include "debug.h"
 #include "serial_buffer.h"
@@ -227,13 +228,15 @@ static void dns_deserialize(struct dns_message *mess, serial_buffer *buf)
 
 static int create_socket(int *sock, struct sockaddr_in *server_addr)
 {
+    /*
     *sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     
     // Settings
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(DNS_PORT);
     inet_pton(AF_INET, DEFAULT_GATEWAY, &server_addr->sin_addr);
-    
+    */
+    // HERE
     return 0;
 }
 
