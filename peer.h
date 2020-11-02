@@ -5,15 +5,13 @@
 #include <stdbool.h>
 #include "net/socket.h"
 
-typedef struct bc_network bc_network;
-
-typedef struct bc_node {
+typedef struct bc_peer {
     uint32_t ip;
     uint16_t port;
     bc_socket socket;
-} bc_node;
+} bc_peer;
 
-int bc_node_connect(bc_node *remote);
-int bc_node_disconnect(bc_node *remote);
+int bc_peer_connect(bc_peer *remote);
+int bc_peer_disconnect(bc_peer *remote);
 
 #endif

@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "node.h"
+#include "peer.h"
 #include "config.h"
 #include "net/proto.h"
 #include "crypto/crypto.h"
 #include "debug.h"
 
-static void handshake(bc_node *node)
+static void handshake(bc_peer *peer)
 {
     bc_msg_version msg = {
         .version = BC_PROTO_VER,
@@ -16,8 +16,8 @@ static void handshake(bc_node *node)
         .dest = {
             .time = 0,
             .services = 1,
-            .ip = (uint64_t) node->ip,
-            .port = node->port
+            .ip = (uint64_t) peer->ip,
+            .port = peer->port
         },
         .src = {
             .time = 0,
@@ -32,17 +32,17 @@ static void handshake(bc_node *node)
     };
     
     bc_proto_version_print(&msg);
-    bc_proto_version_send(&node->socket, &msg);
+    bc_proto_version_send(&peer->socket, &msg);
     
     printf("RECV-------------------------------------------\n");
     unsigned char message_buffer[2000] = {0};
     // TODO Custom recv that gets a full message
-    int len = bc_socket_recv(&node->socket, message_buffer, 2000);
+    int len = bc_socket_recv(&peer->socket, message_buffer, 2000);
     dump_hex(message_buffer, len);
     printf("END-------------------------------------------\n");
 }
 
-int bc_node_connect(bc_node *remote)
+int bc_peer_connect(bc_peer *remote)
 {
     bc_socket_init(&remote->socket, BC_SOCKET_TCP, remote->ip, remote->port);
     bc_socket_connect(&remote->socket);
@@ -50,7 +50,7 @@ int bc_node_connect(bc_node *remote)
     return 0;
 }
 
-int bc_node_disconnect(bc_node *remote)
+int bc_peer_disconnect(bc_peer *remote)
 {
     bc_socket_destroy(&remote->socket);
     return 0;
