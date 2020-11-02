@@ -10,14 +10,29 @@ inline static uint16_t switch_endian_16(uint16_t val)
 }
 
 /*
+ 
+    //
+    // These functions work but generate an unused warning 
+    //
+ 
 static uint32_t switch_endian_32(uint32_t val)
 {
-    
+    return ((val & 0x000000ff) << 24)
+         | ((val & 0x0000ff00) <<  8)
+         | ((val & 0x00ff0000) >>  8)
+         | ((val & 0xff000000) >> 24);
 }
 
 static uint64_t switch_endian_64(uint64_t val)
 {
-    
+    return ((val & 0x00000000000000ff) << 56)
+         | ((val & 0x000000000000ff00) << 40)
+         | ((val & 0x0000000000ff0000) << 24)
+         | ((val & 0x00000000ff000000) <<  8)
+         | ((val & 0x000000ff00000000) >>  8)
+         | ((val & 0x0000ff0000000000) >> 24)
+         | ((val & 0x00ff000000000000) >> 40)
+         | ((val & 0xff00000000000000) >> 56);
 }
 */
 
@@ -71,6 +86,7 @@ static void serialize_header(serial_buffer *message, char *cmd)
     );
 }
 
+#include <stdio.h>
 void bc_proto_send_version(bc_socket *socket, bc_msg_version *msg)
 {
     // Serialize msg
