@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "serial_buffer.h"
+#include "../serial_buffer.h"
 #include "socket.h"
 
 #define MESSAGE_HEADER_LEN 24

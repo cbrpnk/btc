@@ -2,8 +2,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "crypto.h"
 #include "proto.h"
+#include "../crypto/crypto.h"
+#include "../config.h"
 
 inline static uint16_t switch_endian_16(uint16_t val)
 {
@@ -69,7 +70,7 @@ static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
 static void serialize_header(serial_buffer *message, char *cmd)
 {
     // Magic number for testnet
-    serial_buffer_push_u32(message, 0x0709110b); // TODO Pull that from config
+    serial_buffer_push_u32(message, BC_TESTNET_MAGIC_NUM);
     // TODO Test if cmd length is smaller than 12
     // Command
     for(size_t i=0; i<strlen(cmd); ++i) {

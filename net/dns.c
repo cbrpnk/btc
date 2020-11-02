@@ -9,9 +9,8 @@
 
 #include "dns.h"
 #include "socket.h"
-#include "crypto.h"
-#include "debug.h"
-#include "serial_buffer.h"
+#include "../crypto/crypto.h"
+#include "../serial_buffer.h"
 
 ///////////////////////////////// Message /////////////////////////////////////
 

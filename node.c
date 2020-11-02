@@ -1,28 +1,16 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "proto.h"
 #include "node.h"
-#include "crypto.h"
+#include "config.h"
+#include "net/proto.h"
+#include "crypto/crypto.h"
 #include "debug.h"
 
-int bc_node_connect(bc_node *remote)
-{
-    bc_socket_init(&remote->socket, BC_SOCKET_TCP, remote->ip, remote->port);
-    bc_socket_connect(&remote->socket);
-    return 0;
-}
-
-int bc_node_disconnect(bc_node *remote)
-{
-    bc_socket_destroy(&remote->socket);
-    return 0;
-}
-
-void bc_node_handshake(bc_node *node)
+static void handshake(bc_node *node)
 {
     bc_msg_version msg = {
-        .version = node->protocol_version,
+        .version = BC_PROTO_VER,
         .services = 1,
         .timestamp = (uint64_t) time(NULL),
         .dest = {
@@ -38,7 +26,7 @@ void bc_node_handshake(bc_node *node)
             .port = 0
         },
         .nonce = gen_nonce_64(),
-        .user_agent = "/test:0.0.1/",
+        .user_agent = BC_USER_AGENT,
         .start_height = 0,
         .relay = 1
     };
@@ -53,3 +41,18 @@ void bc_node_handshake(bc_node *node)
     dump_hex(message_buffer, len);
     printf("END-------------------------------------------\n");
 }
+
+int bc_node_connect(bc_node *remote)
+{
+    bc_socket_init(&remote->socket, BC_SOCKET_TCP, remote->ip, remote->port);
+    bc_socket_connect(&remote->socket);
+    handshake(remote);
+    return 0;
+}
+
+int bc_node_disconnect(bc_node *remote)
+{
+    bc_socket_destroy(&remote->socket);
+    return 0;
+}
+
