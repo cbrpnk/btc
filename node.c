@@ -8,8 +8,8 @@
 
 int bc_node_connect(bc_node *remote)
 {
-    bc_socket_init(&remote->socket, BC_SOCKET_TCP);
-    bc_socket_connect(&remote->socket, remote->ip, remote->port);
+    bc_socket_init(&remote->socket, BC_SOCKET_TCP, remote->ip, remote->port);
+    bc_socket_connect(&remote->socket);
     return 0;
 }
 
