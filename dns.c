@@ -226,39 +226,23 @@ static void dns_deserialize(struct dns_message *mess, serial_buffer *buf)
 
 ////////////////////////////// Network ////////////////////////////////////
 
-static int create_socket(int *sock, struct sockaddr_in *server_addr)
-{
-    /*
-    *sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    
-    // Settings
-    server_addr->sin_family = AF_INET;
-    server_addr->sin_port = htons(DNS_PORT);
-    inet_pton(AF_INET, DEFAULT_GATEWAY, &server_addr->sin_addr);
-    */
-    // HERE
-    return 0;
-}
-
-static void send_request(int sock, struct sockaddr_in *server_addr,
-                         struct dns_message *mess)
+static void send_request(bc_socket *sock, struct dns_message *mess)
 {
     // Send request
     serial_buffer req;
     serial_buffer_init(&req, DNS_MESSAGE_MAXLEN);
     dns_serialize(&req, mess);
-    sendto(sock, req.data, req.size, 0, (struct sockaddr *) server_addr,
-           sizeof(*server_addr));
+    bc_socket_send(sock, req.data, req.size);
     serial_buffer_destroy(&req);
 }
 
-static void recv_response(int sock, struct dns_message *mess)
+static void recv_response(bc_socket *sock, struct dns_message *mess)
 {
     // TODO Recv full dns_message
     // Receive response
     serial_buffer res;
     serial_buffer_init(&res, DNS_MESSAGE_MAXLEN);
-    int read_len = recvfrom(sock, res.data, 512, 0, NULL, NULL);
+    int read_len = bc_socket_recv(sock, res.data, 512);
     res.size += read_len;
     dns_deserialize(mess, &res);
     serial_buffer_destroy(&res);
@@ -268,19 +252,15 @@ static void recv_response(int sock, struct dns_message *mess)
 
 int dns_query(dns_message *req, dns_message *res)
 {
-    int sock = 0;
-    struct sockaddr_in server_addr;
+    bc_socket sock;
+    bc_socket_init(&sock, BC_SOCKET_UDP, DNS_SERVER_IP, DNS_SERVER_PORT);
     
-    if(create_socket(&sock, &server_addr) != 0) {
-        return -1;
-    }
-    
-    send_request(sock, &server_addr, req);
+    send_request(&sock, req);
     do {
-        recv_response(sock, res);
+        recv_response(&sock, res);
     } while(req->header.id != res->header.id);
     
-    close(sock);
+    bc_socket_destroy(&sock);
     return 0;
 }
 

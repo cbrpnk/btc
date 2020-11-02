@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 // TODO this should not be hardcoded
-#define DEFAULT_GATEWAY     "192.168.0.1"
-#define DNS_PORT            53
+#define DNS_SERVER_IP       0x01010101 //"1.1.1.1"
+#define DNS_SERVER_PORT     53
 #define DNS_MESSAGE_MAXLEN  512
 
 typedef enum dns_record_type {

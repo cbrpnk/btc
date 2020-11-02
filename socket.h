@@ -22,9 +22,9 @@ typedef struct bc_socket {
 } bc_socket;
 
 int bc_socket_init(bc_socket *s, bc_socket_type type, uint32_t ip, uint16_t port);
+void bc_socket_destroy(bc_socket *s);
 int bc_socket_connect(bc_socket *s);
 int bc_socket_send(bc_socket *s, const void *buffer, unsigned int len);
 int bc_socket_recv(bc_socket *s, void *out, unsigned int max_len);
-void bc_socket_disconnect(bc_socket *s);
 
 #endif

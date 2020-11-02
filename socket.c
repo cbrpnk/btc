@@ -35,6 +35,12 @@ int bc_socket_init(bc_socket *s, bc_socket_type type, uint32_t ip, uint16_t port
     return 0;
 }
 
+void bc_socket_destroy(bc_socket *s)
+{
+    close(s->id);
+    s->connected = false;
+}
+
 int bc_socket_connect(bc_socket *s)
 {
     if((connect(s->id, (struct sockaddr *) &s->saddr_in,
@@ -75,10 +81,4 @@ int bc_socket_recv(bc_socket *s, void *out, unsigned int max_len)
         break;
     }
     return 0;
-}
-
-void bc_socket_disconnect(bc_socket *s)
-{
-    close(s->id);
-    s->connected = false;
 }

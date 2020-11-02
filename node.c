@@ -15,7 +15,7 @@ int bc_node_connect(bc_node *remote)
 
 int bc_node_disconnect(bc_node *remote)
 {
-    bc_socket_disconnect(&remote->socket);
+    bc_socket_destroy(&remote->socket);
     return 0;
 }
 
