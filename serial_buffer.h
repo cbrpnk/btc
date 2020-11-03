@@ -12,7 +12,7 @@ typedef struct serial_buffer {
     size_t capacity;
 } serial_buffer;
 
-void serial_buffer_init(serial_buffer *buf, size_t size);
+void serial_buffer_init(serial_buffer *buf, size_t capacity);
 void serial_buffer_destroy(serial_buffer *buf);
 void serial_buffer_require(serial_buffer *buf, size_t size);
 
@@ -27,6 +27,5 @@ uint16_t serial_buffer_pop_u16(serial_buffer *buf);
 uint32_t serial_buffer_pop_u32(serial_buffer *buf);
 uint64_t serial_buffer_pop_u64(serial_buffer *buf);
 void     serial_buffer_pop_mem(void *val, size_t len, serial_buffer *buf);
-
 
 #endif

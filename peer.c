@@ -34,6 +34,12 @@ static void handshake(bc_peer *peer)
     bc_proto_version_print(&msg);
     bc_proto_version_send(&peer->socket, &msg);
     
+    // TODO try to have this interface with
+    // generic proto_msg
+    // bc_proto_send(&peer->socket, &request);
+    // bc_proto_msg response;
+    // bc_proto_recv(&peed->socket, &response);
+    
     printf("RECV-------------------------------------------\n");
     unsigned char message_buffer[2000] = {0};
     // TODO Custom recv that gets a full message

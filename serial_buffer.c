@@ -3,9 +3,9 @@
 #include <string.h>
 #include "serial_buffer.h"
 
-void serial_buffer_init(serial_buffer *buf, size_t size)
+void serial_buffer_init(serial_buffer *buf, size_t capacity)
 {
-    buf->capacity = size;
+    buf->capacity = capacity;
     buf->data = calloc(buf->capacity, 1);
     buf->next = 0;
     buf->size = 0;

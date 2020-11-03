@@ -18,15 +18,26 @@ typedef struct bc_proto_net_addr {
 
 void bc_proto_net_addr_print(bc_proto_net_addr *n);
 
-typedef struct bc_msg_header {
+typedef enum bc_proto_msg_type {
+    BC_PROTO_INVALID = 0, // In case a type is zero-initialized
+    BC_PROTO_VERSION,
+    BC_PROTO_VERACK,
+} bc_proto_msg_type;
+
+typedef struct bc_proto_header {
     uint32_t magic;
     char     command[12];
     uint32_t len;
     uint32_t checksum;
-} bc_msg_header;
+} bc_proto_header;
+
+typedef struct bc_proto_msg {
+    bc_proto_msg_type   type;
+    bc_proto_header header;
+} bc_proto_msg;
 
 typedef struct bc_msg_version {
-    bc_msg_header     header;
+    bc_proto_msg      base;
     uint32_t          version;
     uint64_t          services;
     uint64_t          timestamp;
