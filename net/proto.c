@@ -99,6 +99,16 @@ void bc_proto_send(bc_socket *socket, serial_buffer *msg)
     bc_socket_send(socket, msg->data, msg->size);
 }
 
+bc_proto_msg_type bc_proto_recv(bc_socket *socket, void **msg_out)
+{
+    // TODO Hardcoded will not work
+    unsigned char message_buffer[2000] = {0};
+    bc_socket_recv(socket, message_buffer, 2000);
+    //dump_hex(message_buffer, len);
+    printf("asd\n");
+    return 2;
+}
+
 void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
 {
     // Serialize msg

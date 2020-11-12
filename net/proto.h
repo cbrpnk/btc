@@ -51,6 +51,7 @@ typedef struct bc_msg_version {
 } bc_msg_version;
 
 void bc_proto_send(bc_socket *socket, serial_buffer *msg);
+bc_proto_msg_type bc_proto_recv(bc_socket *socket, void **msg_out);
 
 void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg);
 void bc_proto_version_print(bc_msg_version *msg);
