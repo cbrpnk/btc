@@ -31,12 +31,17 @@ typedef struct bc_proto_header {
     uint32_t checksum;
 } bc_proto_header;
 
+// The first member of every derived message is a bc_proto_msg_type.
+// This struct is a abstract msg which enables casting to a specific 
+// msg type at run time.
 typedef struct bc_proto_msg {
     bc_proto_msg_type   type;
-    bc_proto_header header;
 } bc_proto_msg;
+void bc_proto_msg_destroy(bc_proto_msg *msg);
 
 typedef struct bc_msg_version {
+    // Type has to be the first element to allow casting 
+    bc_proto_msg_type type;
     bc_proto_msg      base;
     uint32_t          version;
     uint64_t          services;
@@ -50,11 +55,11 @@ typedef struct bc_msg_version {
     bool              relay;
 } bc_msg_version;
 
-void bc_proto_send(bc_socket *socket, serial_buffer *msg);
-bc_proto_msg_type bc_proto_recv(bc_socket *socket, void **msg_out);
+void bc_proto_send_buffer(bc_socket *socket, serial_buffer *msg);
+void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out);
 
+void bc_proto_version_deserialize(bc_msg_version *version, serial_buffer *buf);
 void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg);
 void bc_proto_version_print(bc_msg_version *msg);
-
 
 #endif

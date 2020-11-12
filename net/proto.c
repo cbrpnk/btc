@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -38,6 +39,11 @@ static uint64_t switch_endian_64(uint64_t val)
 }
 */
 
+void bc_proto_msg_destroy(bc_proto_msg *msg)
+{
+    free(msg);
+}
+
 // Bitcoin special field serialization
 static void serialize_string(serial_buffer *buf, const char *str)
 {
@@ -67,7 +73,7 @@ static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
     serial_buffer_push_u32(buf, ip);
 }
 
-static void serialize_header(serial_buffer *message, char *cmd)
+static void serialize_header(serial_buffer *message, const char *cmd)
 {
     // Magic number for testnet
     serial_buffer_push_u32(message, BC_TESTNET_MAGIC_NUM);
@@ -88,25 +94,45 @@ static void serialize_header(serial_buffer *message, char *cmd)
     );
 }
 
+static void deserialize_header(serial_buffer *msg, bc_proto_header *header)
+{
+    header->magic = serial_buffer_pop_u32(msg);
+    serial_buffer_pop_mem(&header->command, 12, msg);
+    header->len = serial_buffer_pop_u32(msg);
+    header->checksum = serial_buffer_pop_u32(msg);  // TODO Verify checksum
+}
+
 void bc_proto_net_addr_print(bc_proto_net_addr *n)
 {
     printf("{Time: %d, Services: %ld, Ip: %ld, Port: %hd}",
             n->time, n->services, n->ip, n->port);
 }
 
-void bc_proto_send(bc_socket *socket, serial_buffer *msg)
+void bc_proto_send_buffer(bc_socket *socket, serial_buffer *msg)
 {
     bc_socket_send(socket, msg->data, msg->size);
 }
 
-bc_proto_msg_type bc_proto_recv(bc_socket *socket, void **msg_out)
+void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out)
 {
     // TODO Hardcoded will not work
-    unsigned char message_buffer[2000] = {0};
-    bc_socket_recv(socket, message_buffer, 2000);
-    //dump_hex(message_buffer, len);
-    printf("asd\n");
-    return 2;
+    unsigned char raw_response[2000] = {0};
+    unsigned int len = bc_socket_recv(socket, raw_response, 2000);
+    serial_buffer serial_response;
+    serial_buffer_init_from_data(&serial_response, raw_response, len);
+    bc_proto_header header;
+    deserialize_header(&serial_response, &header);
+    if(strcmp(header.command, "version") == 0) {
+        *msg_out = malloc(sizeof(bc_msg_version));
+        bc_msg_version *version = (bc_msg_version *) *msg_out;
+        version->type = BC_PROTO_VERSION;
+        bc_proto_version_deserialize(version, &serial_response);
+    }
+}
+
+void bc_proto_version_deserialize(bc_msg_version *version, serial_buffer *buf)
+{
+    printf("deserialize version\n");
 }
 
 void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
@@ -137,7 +163,7 @@ void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
     message.next = 0;
     serialize_header(&message, "version");
     
-    bc_proto_send(socket, &message);
+    bc_proto_send_buffer(socket, &message);
     serial_buffer_destroy(&message);
 }
 

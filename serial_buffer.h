@@ -13,6 +13,7 @@ typedef struct serial_buffer {
 } serial_buffer;
 
 void serial_buffer_init(serial_buffer *buf, size_t capacity);
+void serial_buffer_init_from_data(serial_buffer *buf, void *data, size_t len);
 void serial_buffer_destroy(serial_buffer *buf);
 void serial_buffer_require(serial_buffer *buf, size_t size);
 

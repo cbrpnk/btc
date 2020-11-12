@@ -33,8 +33,27 @@ static void handshake(bc_peer *peer)
     
     bc_proto_version_print(&msg);
     bc_proto_version_send(&peer->socket, &msg);
-    void *message;
-    bc_proto_msg_type type = bc_proto_recv(&peer->socket, &message);
+    
+    bc_proto_msg *response;
+    bc_proto_recv(&peer->socket, &response);
+    switch(response->type) {
+    case BC_PROTO_VERSION:
+        printf("version command recv\n");
+        bc_msg_version *version_res = (bc_msg_version *) response;
+        break;
+    case BC_PROTO_VERACK:
+        printf("verack command recv\n");
+        break;
+    case BC_PROTO_INVALID:
+        // Cascade down
+    default:
+        printf("Peer: invalid message");
+    }
+    bc_proto_msg_destroy(response);
+    
+    /*
+    bc_proto_msg *message;
+    bc_proto_recv(&peer->socket, &message);
     switch(type) {
     case BC_PROTO_INVALID: break;
     case BC_PROTO_VERSION:
@@ -42,6 +61,8 @@ static void handshake(bc_peer *peer)
     case BC_PROTO_VERACK:
         break;
     }
+    */
+    
     
     // TODO try to have this interface with
     // generic proto_msg
