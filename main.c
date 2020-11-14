@@ -1,6 +1,6 @@
 #include "config.h"
 #include "net/dns.h"
-#include "peer.h"
+#include "net/peer.h"
 
 // Testnet seed dns
 // seed.tbtc.petertodd.org

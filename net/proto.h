@@ -42,14 +42,18 @@ void bc_proto_msg_destroy(bc_proto_msg *msg);
 typedef struct bc_msg_version {
     // Type has to be the first element to allow casting 
     bc_proto_msg_type type;
-    bc_proto_msg      base;
     uint32_t          version;
     uint64_t          services;
     uint64_t          timestamp;
     bc_proto_net_addr dest;
     bc_proto_net_addr src;
     uint64_t          nonce;
-    char              *user_agent;
+    
+    // TODO Prefix this constant
+    // TODO Make printing handle a non-null terminated string
+    #define USER_AGENT_MAX_LEN 64
+    char              user_agent[USER_AGENT_MAX_LEN];
+    
     // Start height, last block received by us
     uint32_t          start_height;
     bool              relay;
@@ -58,7 +62,7 @@ typedef struct bc_msg_version {
 void bc_proto_send_buffer(bc_socket *socket, serial_buffer *msg);
 void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out);
 
-void bc_proto_version_deserialize(bc_msg_version *version, serial_buffer *buf);
+void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf);
 void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg);
 void bc_proto_version_print(bc_msg_version *msg);
 

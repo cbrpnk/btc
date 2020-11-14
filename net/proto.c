@@ -12,11 +12,7 @@ inline static uint16_t switch_endian_16(uint16_t val)
     return (((val & 0xff) << 8) | ((val & 0xff00) >> 8));
 }
 
-/*
  
-    //
-    // These functions work but generate an unused warning 
-    //
  
 static uint32_t switch_endian_32(uint32_t val)
 {
@@ -26,6 +22,10 @@ static uint32_t switch_endian_32(uint32_t val)
          | ((val & 0xff000000) >> 24);
 }
 
+/*
+//
+// This function works but generate an unused warning 
+//
 static uint64_t switch_endian_64(uint64_t val)
 {
     return ((val & 0x00000000000000ff) << 56)
@@ -57,6 +57,11 @@ static void serialize_port(serial_buffer *buf, uint16_t port)
     serial_buffer_push_u16(buf, switch_endian_16(port));
 }
 
+static void deserialize_port(uint16_t *port, serial_buffer *buf)
+{
+    *port = switch_endian_16(serial_buffer_pop_u16(buf));
+}
+
 static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
 {
     // 10 zero bytes
@@ -71,6 +76,22 @@ static void serialize_ipv4(serial_buffer *buf, uint32_t ip)
     
     // 4 IPv4 bytes
     serial_buffer_push_u32(buf, ip);
+}
+
+static void deserialize_ipv4(uint32_t *ip, serial_buffer *buf)
+{
+    // 10 zero bytes
+    for(int i=0; i<10; ++i) {
+        serial_buffer_pop_u8(buf);
+    }
+    
+    // 2 ff bytes
+    for(int i=0; i<2; ++i) {
+        serial_buffer_pop_u8(buf);
+    }
+    
+    // 4 IPv4 bytes
+    *ip = switch_endian_32(serial_buffer_pop_u32(buf));
 }
 
 static void serialize_header(serial_buffer *message, const char *cmd)
@@ -104,7 +125,7 @@ static void deserialize_header(serial_buffer *msg, bc_proto_header *header)
 
 void bc_proto_net_addr_print(bc_proto_net_addr *n)
 {
-    printf("{Time: %d, Services: %ld, Ip: %ld, Port: %hd}",
+    printf("{Time: %x, Services: %lx, Ip: %lx, Port: %hu}",
             n->time, n->services, n->ip, n->port);
 }
 
@@ -130,9 +151,25 @@ void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out)
     }
 }
 
-void bc_proto_version_deserialize(bc_msg_version *version, serial_buffer *buf)
+void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
 {
     printf("deserialize version\n");
+    msg->version = serial_buffer_pop_u32(buf);
+    msg->services = serial_buffer_pop_u64(buf);
+    msg->timestamp = serial_buffer_pop_u64(buf);
+    msg->dest.services = serial_buffer_pop_u64(buf);
+    deserialize_ipv4((uint32_t *) &(msg->dest.ip), buf);
+    deserialize_port(&(msg->dest.port), buf);
+    msg->src.services = serial_buffer_pop_u64(buf);
+    deserialize_ipv4((uint32_t *) &(msg->src.ip), buf);
+    deserialize_port(&(msg->src.port), buf);
+    msg->nonce = serial_buffer_pop_u64(buf);
+    // TODO Do user agent
+    unsigned char user_agent_len = serial_buffer_pop_u8(buf);
+    user_agent_len = (user_agent_len <= USER_AGENT_MAX_LEN) ? user_agent_len : USER_AGENT_MAX_LEN;
+    serial_buffer_pop_mem(msg->user_agent, user_agent_len, buf);
+    msg->start_height = serial_buffer_pop_u32(buf);
+    msg->relay = serial_buffer_pop_u8(buf);
 }
 
 void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
@@ -175,7 +212,7 @@ void bc_proto_version_print(bc_msg_version *msg)
     bc_proto_net_addr_print(&msg->dest);
     printf("\n\tSrc: ");
     bc_proto_net_addr_print(&msg->src);
-    printf("\n\tNonce: %ld,\n\tUser-Agent: %s\n\tStart height: %d,\n"
+    printf("\n\tNonce: %lx,\n\tUser-Agent: %s\n\tStart height: %d,\n"
            "\tRelay: %d,\n};\n",
             msg->nonce, msg->user_agent, msg->start_height, msg->relay);
 }
