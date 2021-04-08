@@ -14,7 +14,8 @@ void serial_buffer_init(serial_buffer *buf, size_t capacity)
 void serial_buffer_init_from_data(serial_buffer *buf, void *data, size_t len)
 {
     buf->capacity = len;
-    buf->data = calloc(buf->capacity, 1);
+    buf->data = calloc(1, buf->capacity);
+    printf("---->%d", buf->capacity);
     memcpy(buf->data, data, len);
     buf->next = 0;
     buf->size = len;
