@@ -13,6 +13,8 @@ static void handle_msg_version(bc_msg_version *ver)
     bc_proto_version_print(ver);
 }
 
+// TODO There should not be a handshake function. The peer should
+// send a version message, then enter the non-blocking recv/process loop.
 static void handshake(bc_peer *peer)
 {
     bc_msg_version msg = {
@@ -32,7 +34,7 @@ static void handshake(bc_peer *peer)
             .port = 0
         },
         .nonce = gen_nonce_64(),
-        //.user_agent = BC_USER_AGENT,
+        //.user_agent is memcopied below
         .start_height = 0,
         .relay = 1
     };
