@@ -12,8 +12,6 @@ inline static uint16_t switch_endian_16(uint16_t val)
     return (((val & 0xff) << 8) | ((val & 0xff00) >> 8));
 }
 
- 
- 
 static uint32_t switch_endian_32(uint32_t val)
 {
     return ((val & 0x000000ff) << 24)
@@ -144,27 +142,32 @@ void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out)
     bc_proto_header header;
     deserialize_header(&serial_response, &header);
     if(strcmp(header.command, "version") == 0) {
-        *msg_out = malloc(sizeof(bc_msg_version));
+        *msg_out = calloc(1, sizeof(bc_msg_version));
+        
         bc_msg_version *version = (bc_msg_version *) *msg_out;
         version->type = BC_PROTO_VERSION;
         bc_proto_version_deserialize(version, &serial_response);
     }
+    serial_buffer_destroy(&serial_response);
 }
 
 void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
 {
-    printf("deserialize version\n");
     msg->version = serial_buffer_pop_u32(buf);
     msg->services = serial_buffer_pop_u64(buf);
     msg->timestamp = serial_buffer_pop_u64(buf);
+    // Dest
     msg->dest.services = serial_buffer_pop_u64(buf);
+    msg->dest.time = 0; // Not present in version message
     deserialize_ipv4((uint32_t *) &(msg->dest.ip), buf);
     deserialize_port(&(msg->dest.port), buf);
+    // Src
     msg->src.services = serial_buffer_pop_u64(buf);
+    msg->src.time = 0; // Not present in version message
     deserialize_ipv4((uint32_t *) &(msg->src.ip), buf);
     deserialize_port(&(msg->src.port), buf);
+    //
     msg->nonce = serial_buffer_pop_u64(buf);
-    // TODO Do user agent
     unsigned char user_agent_len = serial_buffer_pop_u8(buf);
     user_agent_len = (user_agent_len <= USER_AGENT_MAX_LEN) ? user_agent_len : USER_AGENT_MAX_LEN;
     serial_buffer_pop_mem(msg->user_agent, user_agent_len, buf);
