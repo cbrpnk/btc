@@ -6,7 +6,6 @@
 #include "proto.h"
 #include "../config.h"
 #include "../crypto/crypto.h"
-#include "../debug.h"
 
 static void handle_msg_version(bc_msg_version *ver)
 {

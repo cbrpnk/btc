@@ -4,7 +4,7 @@
 -[x] Implement switch_endian32 and 64
 -[ ] Investigate bug where we don't get the whole message
 -[ ] Make a proto_send/proto_recv that accepts
--[ ] Remove debug, and add a to_string() for every message
+-[x] Remove debug, and add a to_string() for every message
 -[ ] Put node_main.txt and seed_dns.txt into config
 -[ ] Have a to_string for dns messages
 -[ ] Have a network type that manages nodes
