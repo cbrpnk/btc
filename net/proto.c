@@ -103,6 +103,7 @@ static void serialize_header(serial_buffer *message, const char *cmd)
     }
     // Command padding
     message->next += 12-strlen(cmd);
+    printf("%d->%d\n\n", message->size, MESSAGE_HEADER_LEN);
     // Payload len
     size_t payload_len = message->size - MESSAGE_HEADER_LEN;
     serial_buffer_push_u32(message, payload_len);
@@ -143,10 +144,15 @@ void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out)
     deserialize_header(&serial_response, &header);
     if(strcmp(header.command, "version") == 0) {
         *msg_out = calloc(1, sizeof(bc_msg_version));
-        
         bc_msg_version *version = (bc_msg_version *) *msg_out;
         version->type = BC_PROTO_VERSION;
         bc_proto_version_deserialize(version, &serial_response);
+    } else if(strcmp(header.command, "verack") == 0) {
+        *msg_out = calloc(1, sizeof(bc_msg_verack));
+        bc_msg_verack *verack = (bc_msg_verack *) *msg_out;
+        verack->type = BC_PROTO_VERACK;
+    } else {
+        printf("unkown msg\n");
     }
     serial_buffer_destroy(&serial_response);
 }
@@ -220,3 +226,16 @@ void bc_proto_version_print(bc_msg_version *msg)
             msg->nonce, msg->user_agent, msg->start_height, msg->relay);
 }
 
+void bc_proto_verack_send(bc_socket *socket)
+{
+    serial_buffer message;
+    serial_buffer_init(&message, MESSAGE_HEADER_LEN);
+    // Since we don't the message is simply a header and we don't push 
+    // any byte to it, let's update the message size manually so that 
+    // serialize_header logic works. Bad hack
+    // TODO FIX ME
+    message.size = MESSAGE_HEADER_LEN;
+    serialize_header(&message, "verack");
+    bc_proto_send_buffer(socket, &message);
+    serial_buffer_destroy(&message);
+}

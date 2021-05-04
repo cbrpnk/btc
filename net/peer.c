@@ -7,11 +7,6 @@
 #include "../config.h"
 #include "../crypto/crypto.h"
 
-static void handle_msg_version(bc_msg_version *ver)
-{
-    bc_proto_version_print(ver);
-}
-
 // TODO There should not be a handshake function. The peer should
 // send a version message, then enter the non-blocking recv/process loop.
 static void handshake(bc_peer *peer)
@@ -42,20 +37,25 @@ static void handshake(bc_peer *peer)
     bc_proto_version_print(&msg);
     bc_proto_version_send(&peer->socket, &msg);
     
-    bc_proto_msg *res;
-    bc_proto_recv(&peer->socket, &res);
-    switch(res->type) {
-    case BC_PROTO_VERSION:
-        handle_msg_version((bc_msg_version *) res); break;
-    case BC_PROTO_VERACK:
-        printf("verack command recv\n"); break;
-    case BC_PROTO_INVALID:
-        // Cascade down
-    default:
-        printf("Peer: invalid message");
+    while(1) {
+        bc_proto_msg *res = NULL;
+        bc_proto_recv(&peer->socket, &res);
+        if(res) {
+            switch(res->type) {
+            case BC_PROTO_VERSION:
+                bc_proto_version_print((bc_msg_version *) res);
+                bc_proto_verack_send(&peer->socket);
+                break;
+            case BC_PROTO_VERACK:
+                printf("verack command recv\n"); break;
+            case BC_PROTO_INVALID:
+                // Cascade down
+            default:
+                printf("Peer: invalid message");
+            }
+            bc_proto_msg_destroy(res);
+        }
     }
-    
-    bc_proto_msg_destroy(res);
 }
 
 int bc_peer_connect(bc_peer *remote)

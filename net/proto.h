@@ -39,6 +39,7 @@ typedef struct bc_proto_msg {
 } bc_proto_msg;
 void bc_proto_msg_destroy(bc_proto_msg *msg);
 
+////////////////////////////// Version
 typedef struct bc_msg_version {
     // Type has to be the first element to allow casting 
     bc_proto_msg_type type;
@@ -59,11 +60,19 @@ typedef struct bc_msg_version {
     bool              relay;
 } bc_msg_version;
 
+////////////////////////////// Verack
+typedef struct bc_msg_verack {
+    bc_proto_msg_type type; // A verack msg is just a header
+} bc_msg_verack;
+
+
 void bc_proto_send_buffer(bc_socket *socket, serial_buffer *msg);
 void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out);
 
 void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf);
 void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg);
 void bc_proto_version_print(bc_msg_version *msg);
+
+void bc_proto_verack_send(bc_socket *socket);
 
 #endif
