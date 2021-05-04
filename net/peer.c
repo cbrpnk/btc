@@ -7,6 +7,17 @@
 #include "../config.h"
 #include "../crypto/crypto.h"
 
+static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
+{
+    bc_proto_version_print(msg);
+    bc_proto_verack_send(&peer->socket);
+}
+
+static void handle_msg_verack()
+{
+    printf("verack command recv\n");
+}
+
 // TODO There should not be a handshake function. The peer should
 // send a version message, then enter the non-blocking recv/process loop.
 static void handshake(bc_peer *peer)
@@ -33,21 +44,23 @@ static void handshake(bc_peer *peer)
         .relay = 1
     };
     memcpy(msg.user_agent, BC_USER_AGENT, strlen(BC_USER_AGENT));
-    
     bc_proto_version_print(&msg);
     bc_proto_version_send(&peer->socket, &msg);
     
+    // Main loop
+    // TODO Peer should only handle version verack ping pong
+    // Everything else should be handeled by upper layer
     while(1) {
         bc_proto_msg *res = NULL;
         bc_proto_recv(&peer->socket, &res);
         if(res) {
             switch(res->type) {
             case BC_PROTO_VERSION:
-                bc_proto_version_print((bc_msg_version *) res);
-                bc_proto_verack_send(&peer->socket);
+                handle_msg_version(peer, (bc_msg_version *) res);
                 break;
             case BC_PROTO_VERACK:
-                printf("verack command recv\n"); break;
+                handle_msg_verack();
+                break;
             case BC_PROTO_INVALID:
                 // Cascade down
             default:
