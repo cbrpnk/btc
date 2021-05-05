@@ -133,28 +133,59 @@ void bc_proto_send_buffer(bc_socket *socket, serial_buffer *msg)
     bc_socket_send(socket, msg->data, msg->size);
 }
 
+static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
+{
+    // Check if esp32 has a PEEK flag for recv
+    
+    unsigned char raw_msg[2000] = {0};  // TODO This is hardcoded
+    
+    // Peek for a message header
+    size_t peek_len = 0;
+    peek_len = bc_socket_recv(socket, raw_msg, MESSAGE_HEADER_LEN,
+                                    MSG_PEEK);
+    if(peek_len == 24) {
+        serial_buffer serial_response;
+        serial_buffer_init_from_data(&serial_response, raw_msg,
+                                        MESSAGE_HEADER_LEN);
+        bc_proto_header header;
+        deserialize_header(&serial_response, &header);
+        
+        // Peek for a full message
+        size_t message_len = MESSAGE_HEADER_LEN + header.len;
+        peek_len = bc_socket_recv(socket, raw_msg,
+                                  MESSAGE_HEADER_LEN+header.len, MSG_PEEK);
+        if(peek_len == message_len) {
+            bc_socket_recv(socket, raw_msg,
+                           MESSAGE_HEADER_LEN+header.len, 0);
+            serial_buffer_init_from_data(out, raw_msg,
+                                         message_len);
+            return message_len;
+        }
+    }
+    
+    return 0; // 0 bytes read
+}
+
 void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out)
 {
-    // TODO Hardcoded will not work
-    unsigned char raw_response[2000] = {0};
-    unsigned int len = bc_socket_recv(socket, raw_response, 2000);
-    serial_buffer serial_response;
-    serial_buffer_init_from_data(&serial_response, raw_response, len);
-    bc_proto_header header;
-    deserialize_header(&serial_response, &header);
-    if(strcmp(header.command, "version") == 0) {
-        *msg_out = calloc(1, sizeof(bc_msg_version));
-        bc_msg_version *version = (bc_msg_version *) *msg_out;
-        version->type = BC_PROTO_VERSION;
-        bc_proto_version_deserialize(version, &serial_response);
-    } else if(strcmp(header.command, "verack") == 0) {
-        *msg_out = calloc(1, sizeof(bc_msg_verack));
-        bc_msg_verack *verack = (bc_msg_verack *) *msg_out;
-        verack->type = BC_PROTO_VERACK;
-    } else {
-        printf("unkown msg\n");
+    serial_buffer serial_msg;
+    if(recv_serial_msg(socket, &serial_msg)) {
+        bc_proto_header header;
+        deserialize_header(&serial_msg, &header);
+        if(strcmp(header.command, "version") == 0) {
+            *msg_out = calloc(1, sizeof(bc_msg_version));
+            bc_msg_version *version = (bc_msg_version *) *msg_out;
+            version->type = BC_PROTO_VERSION;
+            bc_proto_version_deserialize(version, &serial_msg);
+        } else if(strcmp(header.command, "verack") == 0) {
+            *msg_out = calloc(1, sizeof(bc_msg_verack));
+            bc_msg_verack *verack = (bc_msg_verack *) *msg_out;
+            verack->type = BC_PROTO_VERACK;
+        } else {
+            printf("unkown msg\n");
+        }
+        serial_buffer_destroy(&serial_msg);
     }
-    serial_buffer_destroy(&serial_response);
 }
 
 void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)

@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "socket.h"
 
-int bc_socket_init(bc_socket *s, bc_socket_type type, uint32_t ip, uint16_t port)
+int bc_socket_init(bc_socket *s, bc_socket_type type, uint32_t ip,
+                    uint16_t port)
 {
     int native_type = 0;
     int protocol = 0;
@@ -68,15 +70,15 @@ int bc_socket_send(bc_socket *s, const void *buffer, unsigned int len)
     return -1;
 }
 
-int bc_socket_recv(bc_socket *s, void *out, unsigned int max_len)
+int bc_socket_recv(bc_socket *s, void *out, unsigned int max_len, int flags)
 {
     switch(s->type) {
     case BC_SOCKET_UDP:
-        recvfrom(s->id, out, max_len, 0, NULL, NULL);
+        recvfrom(s->id, out, max_len, flags, NULL, NULL);
         break;
     case BC_SOCKET_TCP:
         if(s->connected) {
-            return recv(s->id, out, max_len, 0);
+            return recv(s->id, out, max_len, flags);
         }
         break;
     }

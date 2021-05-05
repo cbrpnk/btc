@@ -50,6 +50,7 @@ static void handshake(bc_peer *peer)
     // Main loop
     // TODO Peer should only handle version verack ping pong
     // Everything else should be handeled by upper layer
+    //for(int i=0; i<10; ++i) {
     while(1) {
         bc_proto_msg *res = NULL;
         bc_proto_recv(&peer->socket, &res);

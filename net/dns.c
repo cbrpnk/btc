@@ -241,7 +241,7 @@ static void recv_response(bc_socket *sock, struct dns_message *mess)
     // Receive response
     serial_buffer res;
     serial_buffer_init(&res, DNS_MESSAGE_MAXLEN);
-    int read_len = bc_socket_recv(sock, res.data, 512);
+    int read_len = bc_socket_recv(sock, res.data, 512, 0);
     res.size += read_len;
     dns_deserialize(mess, &res);
     serial_buffer_destroy(&res);
