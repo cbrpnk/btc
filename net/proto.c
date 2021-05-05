@@ -103,7 +103,6 @@ static void serialize_header(serial_buffer *message, const char *cmd)
     }
     // Command padding
     message->next += 12-strlen(cmd);
-    printf("%d->%d\n\n", message->size, MESSAGE_HEADER_LEN);
     // Payload len
     size_t payload_len = message->size - MESSAGE_HEADER_LEN;
     serial_buffer_push_u32(message, payload_len);
@@ -188,6 +187,9 @@ void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out)
     }
 }
 
+
+/////////////////////////////// VERSION ///////////////////////////////
+
 void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
 {
     msg->version = serial_buffer_pop_u32(buf);
@@ -257,6 +259,9 @@ void bc_proto_version_print(bc_msg_version *msg)
             msg->nonce, msg->user_agent, msg->start_height, msg->relay);
 }
 
+
+///////////////////////////// VERACK ////////////////////////////////////
+
 void bc_proto_verack_send(bc_socket *socket)
 {
     serial_buffer message;
@@ -269,4 +274,9 @@ void bc_proto_verack_send(bc_socket *socket)
     serialize_header(&message, "verack");
     bc_proto_send_buffer(socket, &message);
     serial_buffer_destroy(&message);
+}
+
+void bc_proto_verack_print()
+{
+    printf("VERACK\n");
 }

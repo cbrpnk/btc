@@ -11,11 +11,12 @@ static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
 {
     bc_proto_version_print(msg);
     bc_proto_verack_send(&peer->socket);
+    bc_proto_verack_print();
 }
 
 static void handle_msg_verack()
 {
-    printf("verack command recv\n");
+    bc_proto_verack_print();
 }
 
 // TODO There should not be a handshake function. The peer should

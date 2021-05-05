@@ -74,5 +74,6 @@ void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg);
 void bc_proto_version_print(bc_msg_version *msg);
 
 void bc_proto_verack_send(bc_socket *socket);
+void bc_proto_verack_print();
 
 #endif
