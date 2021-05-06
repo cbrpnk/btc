@@ -127,10 +127,12 @@ void bc_proto_net_addr_print(bc_proto_net_addr *n)
             n->time, n->services, n->ip, n->port);
 }
 
+/*
 void bc_proto_send_buffer(bc_socket *socket, serial_buffer *msg)
 {
     bc_socket_send(socket, msg->data, msg->size);
 }
+*/
 
 static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
 {
@@ -214,36 +216,39 @@ void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
     msg->relay = serial_buffer_pop_u8(buf);
 }
 
-void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
+//void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
+void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
 {
     // Serialize msg
-    serial_buffer message;
-    serial_buffer_init(&message, 100);
+    //serial_buffer message;
+    //serial_buffer_init(&message, 100);
     
+    // TODO instead of this hack, just leave a 0 checksum and have
+    // a checksum function at the end
     // Leave room for the message header that will be computed at the end
-    message.next += MESSAGE_HEADER_LEN;
+    buf->next += MESSAGE_HEADER_LEN;
     
-    serial_buffer_push_u32(&message, msg->version);
-    serial_buffer_push_u64(&message, msg->services);
-    serial_buffer_push_u64(&message, msg->timestamp);
-    serial_buffer_push_u64(&message, msg->dest.services);
-    serialize_ipv4(&message, msg->dest.ip);
-    serialize_port(&message, msg->dest.port);
-    serial_buffer_push_u64(&message, msg->src.services);
-    serialize_ipv4(&message, msg->src.ip);
-    serialize_port(&message, msg->src.port);
-    serial_buffer_push_u64(&message, msg->nonce);
-    serial_buffer_push_u8(&message, strlen(msg->user_agent));
-    serialize_string(&message, msg->user_agent);
-    serial_buffer_push_u32(&message, msg->start_height);
-    serial_buffer_push_u8(&message, msg->relay);
+    serial_buffer_push_u32(buf, msg->version);
+    serial_buffer_push_u64(buf, msg->services);
+    serial_buffer_push_u64(buf, msg->timestamp);
+    serial_buffer_push_u64(buf, msg->dest.services);
+    serialize_ipv4(buf, msg->dest.ip);
+    serialize_port(buf, msg->dest.port);
+    serial_buffer_push_u64(buf, msg->src.services);
+    serialize_ipv4(buf, msg->src.ip);
+    serialize_port(buf, msg->src.port);
+    serial_buffer_push_u64(buf, msg->nonce);
+    serial_buffer_push_u8(buf, strlen(msg->user_agent));
+    serialize_string(buf, msg->user_agent);
+    serial_buffer_push_u32(buf, msg->start_height);
+    serial_buffer_push_u8(buf, msg->relay);
     
     // Reset write head
-    message.next = 0;
-    serialize_header(&message, "version");
+    buf->next = 0;
+    serialize_header(buf, "version");
     
-    bc_proto_send_buffer(socket, &message);
-    serial_buffer_destroy(&message);
+    //bc_proto_send_buffer(socket, &message);
+    //serial_buffer_destroy(&message);
 }
 
 void bc_proto_version_print(bc_msg_version *msg)
@@ -262,18 +267,15 @@ void bc_proto_version_print(bc_msg_version *msg)
 
 ///////////////////////////// VERACK ////////////////////////////////////
 
-void bc_proto_verack_send(bc_socket *socket)
+//void bc_proto_verack_send(bc_socket *socket)
+void bc_proto_verack_serialize(serial_buffer *buf)
 {
-    serial_buffer message;
-    serial_buffer_init(&message, MESSAGE_HEADER_LEN);
     // Since we don't the message is simply a header and we don't push 
     // any byte to it, let's update the message size manually so that 
     // serialize_header logic works. Bad hack
     // TODO FIX ME
-    message.size = MESSAGE_HEADER_LEN;
-    serialize_header(&message, "verack");
-    bc_proto_send_buffer(socket, &message);
-    serial_buffer_destroy(&message);
+    buf->size = MESSAGE_HEADER_LEN;
+    serialize_header(buf, "verack");
 }
 
 void bc_proto_verack_print()

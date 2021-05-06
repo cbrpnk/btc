@@ -10,7 +10,10 @@
 static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
 {
     bc_proto_version_print(msg);
-    bc_proto_verack_send(&peer->socket);
+    bc_proto_msg verack = {
+        .type = BC_PROTO_VERACK
+    };
+    bc_peer_send(peer, &verack);
     bc_proto_verack_print();
 }
 
@@ -24,6 +27,7 @@ static void handle_msg_verack()
 static void handshake(bc_peer *peer)
 {
     bc_msg_version msg = {
+        .type = BC_PROTO_VERSION,
         .version = BC_PROTO_VER,
         .services = 1,
         .timestamp = (uint64_t) time(NULL),
@@ -46,7 +50,7 @@ static void handshake(bc_peer *peer)
     };
     memcpy(msg.user_agent, BC_USER_AGENT, strlen(BC_USER_AGENT));
     bc_proto_version_print(&msg);
-    bc_proto_version_send(&peer->socket, &msg);
+    bc_peer_send(peer, (bc_proto_msg *) &msg);
     
     // Main loop
     // TODO Peer should only handle version verack ping pong
@@ -84,5 +88,25 @@ int bc_peer_connect(bc_peer *remote)
 int bc_peer_disconnect(bc_peer *remote)
 {
     bc_socket_destroy(&remote->socket);
+    return 0;
+}
+
+void bc_peer_send(bc_peer *remote, bc_proto_msg *msg)
+{
+    serial_buffer buf;
+    serial_buffer_init(&buf, 100);
+    switch(msg->type) {
+    case BC_PROTO_INVALID: printf("(peer) Invalid Message %d\n"); break;
+    case BC_PROTO_VERSION:
+        bc_proto_version_serialize((bc_msg_version *) msg, &buf);
+        break;
+    case BC_PROTO_VERACK:  bc_proto_verack_serialize(&buf);  break;
+    }
+    bc_socket_send(&remote->socket, buf.data, buf.size);
+    serial_buffer_destroy(&buf);
+}
+
+int bc_peer_recv(bc_peer *remote, bc_proto_msg *msg)
+{
     return 0;
 }
