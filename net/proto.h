@@ -27,7 +27,7 @@ typedef enum bc_proto_msg_type {
 typedef struct bc_proto_header {
     uint32_t magic;
     char     command[12];
-    uint32_t len;               // TODO rename to payload_len
+    uint32_t payload_len;
     uint32_t checksum;
 } bc_proto_header;
 

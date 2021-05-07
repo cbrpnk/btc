@@ -117,7 +117,7 @@ void deserialize_header(serial_buffer *msg, bc_proto_header *header)
 {
     header->magic = serial_buffer_pop_u32(msg);
     serial_buffer_pop_mem(&header->command, 12, msg);
-    header->len = serial_buffer_pop_u32(msg);
+    header->payload_len = serial_buffer_pop_u32(msg);
     header->checksum = serial_buffer_pop_u32(msg);  // TODO Verify checksum
 }
 

@@ -127,12 +127,13 @@ static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
         deserialize_header(&serial_response, &header);
         
         // Peek for a full message
-        size_t message_len = MESSAGE_HEADER_LEN + header.len;
+        size_t message_len = MESSAGE_HEADER_LEN + header.payload_len;
         peek_len = bc_socket_recv(socket, raw_msg,
-                                  MESSAGE_HEADER_LEN+header.len, MSG_PEEK);
+                                  MESSAGE_HEADER_LEN+header.payload_len,
+                                  MSG_PEEK);
         if(peek_len == message_len) {
             bc_socket_recv(socket, raw_msg,
-                           MESSAGE_HEADER_LEN+header.len, 0);
+                           MESSAGE_HEADER_LEN+header.payload_len, 0);
             serial_buffer_init_from_data(out, raw_msg,
                                          message_len);
             return message_len;
