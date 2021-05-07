@@ -66,10 +66,11 @@ typedef struct bc_msg_verack {
 } bc_msg_verack;
 
 
-void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out);
+void serialize_header(serial_buffer *message, const char *cmd);
+void deserialize_header(serial_buffer *msg, bc_proto_header *header);
 
-void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf);
 void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf);
+void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf);
 void bc_proto_version_print(bc_msg_version *msg);
 
 void bc_proto_verack_serialize(serial_buffer *buf);

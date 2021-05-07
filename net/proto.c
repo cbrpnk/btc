@@ -92,7 +92,7 @@ static void deserialize_ipv4(uint32_t *ip, serial_buffer *buf)
     *ip = switch_endian_32(serial_buffer_pop_u32(buf));
 }
 
-static void serialize_header(serial_buffer *message, const char *cmd)
+void serialize_header(serial_buffer *message, const char *cmd)
 {
     // Magic number for testnet
     serial_buffer_push_u32(message, BC_TESTNET_MAGIC_NUM);
@@ -113,7 +113,7 @@ static void serialize_header(serial_buffer *message, const char *cmd)
     );
 }
 
-static void deserialize_header(serial_buffer *msg, bc_proto_header *header)
+void deserialize_header(serial_buffer *msg, bc_proto_header *header)
 {
     header->magic = serial_buffer_pop_u32(msg);
     serial_buffer_pop_mem(&header->command, 12, msg);
@@ -127,94 +127,8 @@ void bc_proto_net_addr_print(bc_proto_net_addr *n)
             n->time, n->services, n->ip, n->port);
 }
 
-/*
-void bc_proto_send_buffer(bc_socket *socket, serial_buffer *msg)
-{
-    bc_socket_send(socket, msg->data, msg->size);
-}
-*/
-
-static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
-{
-    // Check if esp32 has a PEEK flag for recv
-    
-    unsigned char raw_msg[2000] = {0};  // TODO This is hardcoded
-    
-    // Peek for a message header
-    size_t peek_len = 0;
-    peek_len = bc_socket_recv(socket, raw_msg, MESSAGE_HEADER_LEN,
-                                    MSG_PEEK);
-    if(peek_len == 24) {
-        serial_buffer serial_response;
-        serial_buffer_init_from_data(&serial_response, raw_msg,
-                                        MESSAGE_HEADER_LEN);
-        bc_proto_header header;
-        deserialize_header(&serial_response, &header);
-        
-        // Peek for a full message
-        size_t message_len = MESSAGE_HEADER_LEN + header.len;
-        peek_len = bc_socket_recv(socket, raw_msg,
-                                  MESSAGE_HEADER_LEN+header.len, MSG_PEEK);
-        if(peek_len == message_len) {
-            bc_socket_recv(socket, raw_msg,
-                           MESSAGE_HEADER_LEN+header.len, 0);
-            serial_buffer_init_from_data(out, raw_msg,
-                                         message_len);
-            return message_len;
-        }
-    }
-    
-    return 0; // 0 bytes read
-}
-
-void bc_proto_recv(bc_socket *socket, bc_proto_msg **msg_out)
-{
-    serial_buffer serial_msg;
-    if(recv_serial_msg(socket, &serial_msg)) {
-        bc_proto_header header;
-        deserialize_header(&serial_msg, &header);
-        if(strcmp(header.command, "version") == 0) {
-            *msg_out = calloc(1, sizeof(bc_msg_version));
-            bc_msg_version *version = (bc_msg_version *) *msg_out;
-            version->type = BC_PROTO_VERSION;
-            bc_proto_version_deserialize(version, &serial_msg);
-        } else if(strcmp(header.command, "verack") == 0) {
-            *msg_out = calloc(1, sizeof(bc_msg_verack));
-            bc_msg_verack *verack = (bc_msg_verack *) *msg_out;
-            verack->type = BC_PROTO_VERACK;
-        } else {
-            printf("unkown msg\n");
-        }
-        serial_buffer_destroy(&serial_msg);
-    }
-}
-
 
 /////////////////////////////// VERSION ///////////////////////////////
-
-void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
-{
-    msg->version = serial_buffer_pop_u32(buf);
-    msg->services = serial_buffer_pop_u64(buf);
-    msg->timestamp = serial_buffer_pop_u64(buf);
-    // Dest
-    msg->dest.services = serial_buffer_pop_u64(buf);
-    msg->dest.time = 0; // Not present in version message
-    deserialize_ipv4((uint32_t *) &(msg->dest.ip), buf);
-    deserialize_port(&(msg->dest.port), buf);
-    // Src
-    msg->src.services = serial_buffer_pop_u64(buf);
-    msg->src.time = 0; // Not present in version message
-    deserialize_ipv4((uint32_t *) &(msg->src.ip), buf);
-    deserialize_port(&(msg->src.port), buf);
-    //
-    msg->nonce = serial_buffer_pop_u64(buf);
-    unsigned char user_agent_len = serial_buffer_pop_u8(buf);
-    user_agent_len = (user_agent_len <= USER_AGENT_MAX_LEN) ? user_agent_len : USER_AGENT_MAX_LEN;
-    serial_buffer_pop_mem(msg->user_agent, user_agent_len, buf);
-    msg->start_height = serial_buffer_pop_u32(buf);
-    msg->relay = serial_buffer_pop_u8(buf);
-}
 
 //void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
 void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
@@ -249,6 +163,30 @@ void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
     
     //bc_proto_send_buffer(socket, &message);
     //serial_buffer_destroy(&message);
+}
+
+void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
+{
+    msg->version = serial_buffer_pop_u32(buf);
+    msg->services = serial_buffer_pop_u64(buf);
+    msg->timestamp = serial_buffer_pop_u64(buf);
+    // Dest
+    msg->dest.services = serial_buffer_pop_u64(buf);
+    msg->dest.time = 0; // Not present in version message
+    deserialize_ipv4((uint32_t *) &(msg->dest.ip), buf);
+    deserialize_port(&(msg->dest.port), buf);
+    // Src
+    msg->src.services = serial_buffer_pop_u64(buf);
+    msg->src.time = 0; // Not present in version message
+    deserialize_ipv4((uint32_t *) &(msg->src.ip), buf);
+    deserialize_port(&(msg->src.port), buf);
+    //
+    msg->nonce = serial_buffer_pop_u64(buf);
+    unsigned char user_agent_len = serial_buffer_pop_u8(buf);
+    user_agent_len = (user_agent_len <= USER_AGENT_MAX_LEN) ? user_agent_len : USER_AGENT_MAX_LEN;
+    serial_buffer_pop_mem(msg->user_agent, user_agent_len, buf);
+    msg->start_height = serial_buffer_pop_u32(buf);
+    msg->relay = serial_buffer_pop_u8(buf);
 }
 
 void bc_proto_version_print(bc_msg_version *msg)

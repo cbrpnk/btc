@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "peer.h"
 #include "proto.h"
@@ -58,7 +59,7 @@ static void handshake(bc_peer *peer)
     //for(int i=0; i<10; ++i) {
     while(1) {
         bc_proto_msg *res = NULL;
-        bc_proto_recv(&peer->socket, &res);
+        bc_peer_recv(peer, &res);
         if(res) {
             switch(res->type) {
             case BC_PROTO_VERSION:
@@ -96,7 +97,9 @@ void bc_peer_send(bc_peer *remote, bc_proto_msg *msg)
     serial_buffer buf;
     serial_buffer_init(&buf, 100);
     switch(msg->type) {
-    case BC_PROTO_INVALID: printf("(peer) Invalid Message %d\n"); break;
+    case BC_PROTO_INVALID:
+        printf("(peer) Invalid Message %d\n", msg->type);
+        break;
     case BC_PROTO_VERSION:
         bc_proto_version_serialize((bc_msg_version *) msg, &buf);
         break;
@@ -106,7 +109,57 @@ void bc_peer_send(bc_peer *remote, bc_proto_msg *msg)
     serial_buffer_destroy(&buf);
 }
 
-int bc_peer_recv(bc_peer *remote, bc_proto_msg *msg)
+static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
 {
-    return 0;
+    // Check if esp32 has a PEEK flag for recv
+    
+    unsigned char raw_msg[2000] = {0};  // TODO This is hardcoded
+    
+    // Peek for a message header
+    size_t peek_len = 0;
+    peek_len = bc_socket_recv(socket, raw_msg, MESSAGE_HEADER_LEN,
+                                    MSG_PEEK);
+    if(peek_len == 24) {
+        serial_buffer serial_response;
+        serial_buffer_init_from_data(&serial_response, raw_msg,
+                                        MESSAGE_HEADER_LEN);
+        bc_proto_header header;
+        deserialize_header(&serial_response, &header);
+        
+        // Peek for a full message
+        size_t message_len = MESSAGE_HEADER_LEN + header.len;
+        peek_len = bc_socket_recv(socket, raw_msg,
+                                  MESSAGE_HEADER_LEN+header.len, MSG_PEEK);
+        if(peek_len == message_len) {
+            bc_socket_recv(socket, raw_msg,
+                           MESSAGE_HEADER_LEN+header.len, 0);
+            serial_buffer_init_from_data(out, raw_msg,
+                                         message_len);
+            return message_len;
+        }
+    }
+    
+    return 0; // 0 bytes read
+}
+
+void bc_peer_recv(bc_peer *remote, bc_proto_msg **out)
+{
+    serial_buffer serial_msg;
+    if(recv_serial_msg(&remote->socket, &serial_msg)) {
+        bc_proto_header header;
+        deserialize_header(&serial_msg, &header);
+        if(strcmp(header.command, "version") == 0) {
+            *out = calloc(1, sizeof(bc_msg_version));
+            bc_msg_version *version = (bc_msg_version *) *out;
+            version->type = BC_PROTO_VERSION;
+            bc_proto_version_deserialize(version, &serial_msg);
+        } else if(strcmp(header.command, "verack") == 0) {
+            *out = calloc(1, sizeof(bc_msg_verack));
+            bc_msg_verack *verack = (bc_msg_verack *) *out;
+            verack->type = BC_PROTO_VERACK;
+        } else {
+            printf("unkown msg\n");
+        }
+        serial_buffer_destroy(&serial_msg);
+    }
 }
