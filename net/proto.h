@@ -63,7 +63,7 @@ typedef struct bc_msg_pong {
     uint64_t nonce;
 } bc_msg_pong;
 
-void bc_proto_pong_serialize(bc_msg_ping *msg, serial_buffer *buf);
+void bc_proto_pong_serialize(bc_msg_pong *msg, serial_buffer *buf);
 void bc_proto_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf);
 void bc_proto_pong_print(bc_msg_pong *msg);
 

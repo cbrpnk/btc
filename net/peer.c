@@ -15,11 +15,11 @@ static void handle_msg_ping(bc_peer *peer, bc_msg_ping *msg)
         .type = BC_PROTO_PONG,
         .nonce = msg->nonce
     };
-    bc_peer_send(peer, &pong);
+    bc_peer_send(peer, (bc_proto_msg *) &pong);
     bc_proto_pong_print(&pong);
 }
 
-static void handle_msg_pong(bc_msg_ping *msg)
+static void handle_msg_pong(bc_msg_pong *msg)
 {
     bc_proto_pong_print(msg);
 }

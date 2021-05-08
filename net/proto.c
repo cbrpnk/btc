@@ -133,11 +133,11 @@ void bc_proto_net_addr_print(bc_proto_net_addr *n)
 void bc_proto_ping_serialize(bc_msg_ping *msg, serial_buffer *buf)
 {
     buf->size = MESSAGE_HEADER_LEN;
-    serialize_header(buf, "ping");
+    serial_buffer_push_u32(buf, msg->nonce);
     
     // Reset write head
     buf->next = 0;
-    serialize_header(buf, "version");
+    serialize_header(buf, "ping");
 }
 
 void bc_proto_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf)
@@ -147,13 +147,13 @@ void bc_proto_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf)
 
 void bc_proto_ping_print(bc_msg_ping *msg)
 {
-    printf("PING {\n\tNonce: %lx,\n}\n", msg->nonce);
+    printf("ping {\n\tNonce: %lx,\n}\n", msg->nonce);
 }
 
 
 /////////////////////////////// PONG //////////////////////////////////
 
-void bc_proto_pong_serialize(bc_msg_ping *msg, serial_buffer *buf)
+void bc_proto_pong_serialize(bc_msg_pong *msg, serial_buffer *buf)
 {
     buf->next += MESSAGE_HEADER_LEN;
     serial_buffer_push_u64(buf, msg->nonce);
@@ -170,7 +170,7 @@ void bc_proto_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf)
 
 void bc_proto_pong_print(bc_msg_pong *msg)
 {
-    printf("PONG {\n\tNonce: %lx,\n}\n", msg->nonce);
+    printf("pong {\n\tNonce: %lx,\n}\n", msg->nonce);
 }
 
 
@@ -189,7 +189,7 @@ void bc_proto_verack_serialize(serial_buffer *buf)
 
 void bc_proto_verack_print()
 {
-    printf("VERACK\n");
+    printf("verack\n");
 }
 
 
@@ -253,7 +253,7 @@ void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
 
 void bc_proto_version_print(bc_msg_version *msg)
 {
-    printf("VERSION {\n\tVersion: %d,\n\tServices: %ld,\n\tTimestamp: %ld\n",
+    printf("version {\n\tVersion: %d,\n\tServices: %ld,\n\tTimestamp: %ld\n",
             msg->version, msg->services, msg->timestamp);
     printf("\tDest: ");
     bc_proto_net_addr_print(&msg->dest);
