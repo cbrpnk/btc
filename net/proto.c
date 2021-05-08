@@ -128,6 +128,71 @@ void bc_proto_net_addr_print(bc_proto_net_addr *n)
 }
 
 
+/////////////////////////////// PING //////////////////////////////////
+
+void bc_proto_ping_serialize(bc_msg_ping *msg, serial_buffer *buf)
+{
+    buf->size = MESSAGE_HEADER_LEN;
+    serialize_header(buf, "ping");
+    
+    // Reset write head
+    buf->next = 0;
+    serialize_header(buf, "version");
+}
+
+void bc_proto_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf)
+{
+    msg->nonce = serial_buffer_pop_u64(buf);
+}
+
+void bc_proto_ping_print(bc_msg_ping *msg)
+{
+    printf("PING {\n\tNonce: %lx,\n}\n", msg->nonce);
+}
+
+
+/////////////////////////////// PONG //////////////////////////////////
+
+void bc_proto_pong_serialize(bc_msg_ping *msg, serial_buffer *buf)
+{
+    buf->next += MESSAGE_HEADER_LEN;
+    serial_buffer_push_u64(buf, msg->nonce);
+    
+    // Reset write head
+    buf->next = 0;
+    serialize_header(buf, "pong");
+}
+
+void bc_proto_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf)
+{
+    msg->nonce = serial_buffer_pop_u64(buf);
+}
+
+void bc_proto_pong_print(bc_msg_pong *msg)
+{
+    printf("PONG {\n\tNonce: %lx,\n}\n", msg->nonce);
+}
+
+
+///////////////////////////// VERACK ////////////////////////////////////
+
+//void bc_proto_verack_send(bc_socket *socket)
+void bc_proto_verack_serialize(serial_buffer *buf)
+{
+    // Since we don't the message is simply a header and we don't push 
+    // any byte to it, let's update the message size manually so that 
+    // serialize_header logic works. Bad hack
+    // TODO FIX ME
+    buf->size = MESSAGE_HEADER_LEN;
+    serialize_header(buf, "verack");
+}
+
+void bc_proto_verack_print()
+{
+    printf("VERACK\n");
+}
+
+
 /////////////////////////////// VERSION ///////////////////////////////
 
 //void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
@@ -160,9 +225,6 @@ void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
     // Reset write head
     buf->next = 0;
     serialize_header(buf, "version");
-    
-    //bc_proto_send_buffer(socket, &message);
-    //serial_buffer_destroy(&message);
 }
 
 void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
@@ -198,25 +260,6 @@ void bc_proto_version_print(bc_msg_version *msg)
     printf("\n\tSrc: ");
     bc_proto_net_addr_print(&msg->src);
     printf("\n\tNonce: %lx,\n\tUser-Agent: %s\n\tStart height: %d,\n"
-           "\tRelay: %d,\n};\n",
+           "\tRelay: %d,\n}\n",
             msg->nonce, msg->user_agent, msg->start_height, msg->relay);
-}
-
-
-///////////////////////////// VERACK ////////////////////////////////////
-
-//void bc_proto_verack_send(bc_socket *socket)
-void bc_proto_verack_serialize(serial_buffer *buf)
-{
-    // Since we don't the message is simply a header and we don't push 
-    // any byte to it, let's update the message size manually so that 
-    // serialize_header logic works. Bad hack
-    // TODO FIX ME
-    buf->size = MESSAGE_HEADER_LEN;
-    serialize_header(buf, "verack");
-}
-
-void bc_proto_verack_print()
-{
-    printf("VERACK\n");
 }

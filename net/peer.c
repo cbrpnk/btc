@@ -8,6 +8,27 @@
 #include "../config.h"
 #include "../crypto/crypto.h"
 
+static void handle_msg_ping(bc_peer *peer, bc_msg_ping *msg)
+{
+    bc_proto_ping_print(msg);
+    bc_msg_pong pong = {
+        .type = BC_PROTO_PONG,
+        .nonce = msg->nonce
+    };
+    bc_peer_send(peer, &pong);
+    bc_proto_pong_print(&pong);
+}
+
+static void handle_msg_pong(bc_msg_ping *msg)
+{
+    bc_proto_pong_print(msg);
+}
+
+static void handle_msg_verack()
+{
+    bc_proto_verack_print();
+}
+
 static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
 {
     bc_proto_version_print(msg);
@@ -18,10 +39,6 @@ static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
     bc_proto_verack_print();
 }
 
-static void handle_msg_verack()
-{
-    bc_proto_verack_print();
-}
 
 // TODO There should not be a handshake function. The peer should
 // send a version message, then enter the non-blocking recv/process loop.
@@ -62,11 +79,17 @@ static void handshake(bc_peer *peer)
         bc_peer_recv(peer, &res);
         if(res) {
             switch(res->type) {
-            case BC_PROTO_VERSION:
-                handle_msg_version(peer, (bc_msg_version *) res);
+            case BC_PROTO_PING:
+                handle_msg_ping(peer, (bc_msg_ping *) res);
+                break;
+            case BC_PROTO_PONG:
+                handle_msg_pong((bc_msg_pong *) res);
                 break;
             case BC_PROTO_VERACK:
                 handle_msg_verack();
+                break;
+            case BC_PROTO_VERSION:
+                handle_msg_version(peer, (bc_msg_version *) res);
                 break;
             case BC_PROTO_INVALID:
                 // Cascade down
@@ -99,6 +122,12 @@ void bc_peer_send(bc_peer *remote, bc_proto_msg *msg)
     switch(msg->type) {
     case BC_PROTO_INVALID:
         printf("(peer) Invalid Message %d\n", msg->type);
+        break;
+    case BC_PROTO_PING:
+        bc_proto_ping_serialize((bc_msg_ping *) msg, &buf);
+        break;
+    case BC_PROTO_PONG:
+        bc_proto_pong_serialize((bc_msg_pong *) msg, &buf);
         break;
     case BC_PROTO_VERSION:
         bc_proto_version_serialize((bc_msg_version *) msg, &buf);
@@ -149,7 +178,17 @@ void bc_peer_recv(bc_peer *remote, bc_proto_msg **out)
     if(recv_serial_msg(&remote->socket, &serial_msg)) {
         bc_proto_header header;
         deserialize_header(&serial_msg, &header);
-        if(strcmp(header.command, "version") == 0) {
+        if(strcmp(header.command, "ping") == 0) {
+            *out = calloc(1, sizeof(bc_msg_ping));
+            bc_msg_ping *ping = (bc_msg_ping *) *out;
+            ping->type = BC_PROTO_PING;
+            bc_proto_ping_deserialize(ping, &serial_msg);
+        } else if(strcmp(header.command, "pong") == 0) {
+            *out = calloc(1, sizeof(bc_msg_pong));
+            bc_msg_pong *pong = (bc_msg_pong *) *out;
+            pong->type = BC_PROTO_PONG;
+            bc_proto_pong_deserialize(pong, &serial_msg);
+        } else if(strcmp(header.command, "version") == 0) {
             *out = calloc(1, sizeof(bc_msg_version));
             bc_msg_version *version = (bc_msg_version *) *out;
             version->type = BC_PROTO_VERSION;
@@ -159,7 +198,7 @@ void bc_peer_recv(bc_peer *remote, bc_proto_msg **out)
             bc_msg_verack *verack = (bc_msg_verack *) *out;
             verack->type = BC_PROTO_VERACK;
         } else {
-            printf("unkown msg\n");
+            printf("%s [TODO]\n", header.command);
         }
         serial_buffer_destroy(&serial_msg);
     }
