@@ -92,8 +92,15 @@ static void deserialize_ipv4(uint32_t *ip, serial_buffer *buf)
     *ip = switch_endian_32(serial_buffer_pop_u32(buf));
 }
 
-void serialize_header(serial_buffer *message, const char *cmd)
+void bc_proto_serialize_header(serial_buffer *message, const char *cmd)
 {
+    // Calculate payload_len early so that message->size is not affected
+    // by our searial push TODO HACK
+    size_t payload_len = 0;
+    if(message->size > 0) {
+        payload_len = message->size - MESSAGE_HEADER_LEN;
+    }
+    
     // Magic number for testnet
     serial_buffer_push_u32(message, BC_TESTNET_MAGIC_NUM);
     // TODO Test if cmd length is smaller than 12
@@ -104,7 +111,6 @@ void serialize_header(serial_buffer *message, const char *cmd)
     // Command padding
     message->next += 12-strlen(cmd);
     // Payload len
-    size_t payload_len = message->size - MESSAGE_HEADER_LEN;
     serial_buffer_push_u32(message, payload_len);
     // Checksum
     serial_buffer_push_u32(
@@ -113,7 +119,7 @@ void serialize_header(serial_buffer *message, const char *cmd)
     );
 }
 
-void deserialize_header(serial_buffer *msg, bc_proto_header *header)
+void bc_proto_deserialize_header(serial_buffer *msg, bc_proto_header *header)
 {
     header->magic = serial_buffer_pop_u32(msg);
     serial_buffer_pop_mem(&header->command, 12, msg);
@@ -137,7 +143,7 @@ void bc_proto_ping_serialize(bc_msg_ping *msg, serial_buffer *buf)
     
     // Reset write head
     buf->next = 0;
-    serialize_header(buf, "ping");
+    bc_proto_serialize_header(buf, "ping");
 }
 
 void bc_proto_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf)
@@ -160,7 +166,7 @@ void bc_proto_pong_serialize(bc_msg_pong *msg, serial_buffer *buf)
     
     // Reset write head
     buf->next = 0;
-    serialize_header(buf, "pong");
+    bc_proto_serialize_header(buf, "pong");
 }
 
 void bc_proto_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf)
@@ -179,12 +185,7 @@ void bc_proto_pong_print(bc_msg_pong *msg)
 //void bc_proto_verack_send(bc_socket *socket)
 void bc_proto_verack_serialize(serial_buffer *buf)
 {
-    // Since we don't the message is simply a header and we don't push 
-    // any byte to it, let's update the message size manually so that 
-    // serialize_header logic works. Bad hack
-    // TODO FIX ME
-    buf->size = MESSAGE_HEADER_LEN;
-    serialize_header(buf, "verack");
+    bc_proto_serialize_header(buf, "verack");
 }
 
 void bc_proto_verack_print()
@@ -198,13 +199,6 @@ void bc_proto_verack_print()
 //void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
 void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
 {
-    // Serialize msg
-    //serial_buffer message;
-    //serial_buffer_init(&message, 100);
-    
-    // TODO instead of this hack, just leave a 0 checksum and have
-    // a checksum function at the end
-    // Leave room for the message header that will be computed at the end
     buf->next += MESSAGE_HEADER_LEN;
     
     serial_buffer_push_u32(buf, msg->version);
@@ -224,7 +218,7 @@ void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
     
     // Reset write head
     buf->next = 0;
-    serialize_header(buf, "version");
+    bc_proto_serialize_header(buf, "version");
 }
 
 void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)

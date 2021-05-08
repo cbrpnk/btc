@@ -153,7 +153,7 @@ static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
         serial_buffer_init_from_data(&serial_response, raw_msg,
                                         MESSAGE_HEADER_LEN);
         bc_proto_header header;
-        deserialize_header(&serial_response, &header);
+        bc_proto_deserialize_header(&serial_response, &header);
         
         // Peek for a full message
         size_t message_len = MESSAGE_HEADER_LEN + header.payload_len;
@@ -177,7 +177,7 @@ void bc_peer_recv(bc_peer *remote, bc_proto_msg **out)
     serial_buffer serial_msg;
     if(recv_serial_msg(&remote->socket, &serial_msg)) {
         bc_proto_header header;
-        deserialize_header(&serial_msg, &header);
+        bc_proto_deserialize_header(&serial_msg, &header);
         if(strcmp(header.command, "ping") == 0) {
             *out = calloc(1, sizeof(bc_msg_ping));
             bc_msg_ping *ping = (bc_msg_ping *) *out;

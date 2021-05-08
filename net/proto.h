@@ -33,9 +33,8 @@ typedef struct bc_proto_header {
     uint32_t checksum;
 } bc_proto_header;
 
-void serialize_header(serial_buffer *message, const char *cmd);
-void deserialize_header(serial_buffer *msg, bc_proto_header *header);
-
+void bc_proto_serialize_header(serial_buffer *message, const char *cmd);
+void bc_proto_deserialize_header(serial_buffer *msg, bc_proto_header *header);
 
 // The first member of every derived message is a bc_proto_msg_type.
 // This struct is a abstract msg which enables casting to a specific 
