@@ -29,4 +29,11 @@ uint32_t serial_buffer_pop_u32(serial_buffer *buf);
 uint64_t serial_buffer_pop_u64(serial_buffer *buf);
 void     serial_buffer_pop_mem(void *val, size_t len, serial_buffer *buf);
 
+uint8_t  serial_buffer_peek_u8(serial_buffer *buf);
+uint16_t serial_buffer_peek_u16(serial_buffer *buf);
+uint32_t serial_buffer_peek_u32(serial_buffer *buf);
+uint64_t serial_buffer_peek_u64(serial_buffer *buf);
+// TODO peek_mem
+
+
 #endif

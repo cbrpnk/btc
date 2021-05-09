@@ -10,33 +10,33 @@
 
 static void handle_msg_ping(bc_peer *peer, bc_msg_ping *msg)
 {
-    bc_proto_ping_print(msg);
+    bc_msg_ping_print(msg);
     bc_msg_pong pong = {
-        .type = BC_PROTO_PONG,
+        .type = BC_MSG_PONG,
         .nonce = msg->nonce
     };
-    bc_peer_send(peer, (bc_proto_msg *) &pong);
-    bc_proto_pong_print(&pong);
+    bc_peer_send(peer, (bc_msg *) &pong);
+    bc_msg_pong_print(&pong);
 }
 
 static void handle_msg_pong(bc_msg_pong *msg)
 {
-    bc_proto_pong_print(msg);
+    bc_msg_pong_print(msg);
 }
 
 static void handle_msg_verack()
 {
-    bc_proto_verack_print();
+    bc_msg_verack_print();
 }
 
 static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
 {
-    bc_proto_version_print(msg);
-    bc_proto_msg verack = {
-        .type = BC_PROTO_VERACK
+    bc_msg_version_print(msg);
+    bc_msg verack = {
+        .type = BC_MSG_VERACK
     };
     bc_peer_send(peer, &verack);
-    bc_proto_verack_print();
+    bc_msg_verack_print();
 }
 
 
@@ -45,7 +45,7 @@ static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
 static void handshake(bc_peer *peer)
 {
     bc_msg_version msg = {
-        .type = BC_PROTO_VERSION,
+        .type = BC_MSG_VERSION,
         .version = BC_PROTO_VER,
         .services = 1,
         .timestamp = (uint64_t) time(NULL),
@@ -67,36 +67,38 @@ static void handshake(bc_peer *peer)
         .relay = 1
     };
     memcpy(msg.user_agent, BC_USER_AGENT, strlen(BC_USER_AGENT));
-    bc_proto_version_print(&msg);
-    bc_peer_send(peer, (bc_proto_msg *) &msg);
+    bc_msg_version_print(&msg);
+    bc_peer_send(peer, (bc_msg *) &msg);
     
     // Main loop
     // TODO Peer should only handle version verack ping pong
     // Everything else should be handeled by upper layer
     //for(int i=0; i<10; ++i) {
     while(1) {
-        bc_proto_msg *res = NULL;
+        bc_msg *res = NULL;
         bc_peer_recv(peer, &res);
         if(res) {
             switch(res->type) {
-            case BC_PROTO_PING:
+            case BC_MSG_INV:
+                break;
+            case BC_MSG_PING:
                 handle_msg_ping(peer, (bc_msg_ping *) res);
                 break;
-            case BC_PROTO_PONG:
+            case BC_MSG_PONG:
                 handle_msg_pong((bc_msg_pong *) res);
                 break;
-            case BC_PROTO_VERACK:
+            case BC_MSG_VERACK:
                 handle_msg_verack();
                 break;
-            case BC_PROTO_VERSION:
+            case BC_MSG_VERSION:
                 handle_msg_version(peer, (bc_msg_version *) res);
                 break;
-            case BC_PROTO_INVALID:
+            case BC_MSG_INVALID:
                 // Cascade down
             default:
                 printf("Peer: invalid message");
             }
-            bc_proto_msg_destroy(res);
+            bc_msg_destroy(res);
         }
     }
 }
@@ -115,24 +117,24 @@ int bc_peer_disconnect(bc_peer *remote)
     return 0;
 }
 
-void bc_peer_send(bc_peer *remote, bc_proto_msg *msg)
+void bc_peer_send(bc_peer *remote, bc_msg *msg)
 {
     serial_buffer buf;
     serial_buffer_init(&buf, 100);
     switch(msg->type) {
-    case BC_PROTO_INVALID:
+    case BC_MSG_INVALID:
         printf("(peer) Invalid Message %d\n", msg->type);
         break;
-    case BC_PROTO_PING:
-        bc_proto_ping_serialize((bc_msg_ping *) msg, &buf);
+    case BC_MSG_PING:
+        bc_msg_ping_serialize((bc_msg_ping *) msg, &buf);
         break;
-    case BC_PROTO_PONG:
-        bc_proto_pong_serialize((bc_msg_pong *) msg, &buf);
+    case BC_MSG_PONG:
+        bc_msg_pong_serialize((bc_msg_pong *) msg, &buf);
         break;
-    case BC_PROTO_VERSION:
-        bc_proto_version_serialize((bc_msg_version *) msg, &buf);
+    case BC_MSG_VERSION:
+        bc_msg_version_serialize((bc_msg_version *) msg, &buf);
         break;
-    case BC_PROTO_VERACK:  bc_proto_verack_serialize(&buf);  break;
+    case BC_MSG_VERACK:  bc_msg_verack_serialize(&buf);  break;
     }
     bc_socket_send(&remote->socket, buf.data, buf.size);
     serial_buffer_destroy(&buf);
@@ -172,7 +174,7 @@ static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
     return 0; // 0 bytes read
 }
 
-void bc_peer_recv(bc_peer *remote, bc_proto_msg **out)
+void bc_peer_recv(bc_peer *remote, bc_msg **out)
 {
     serial_buffer serial_msg;
     if(recv_serial_msg(&remote->socket, &serial_msg)) {
@@ -181,22 +183,22 @@ void bc_peer_recv(bc_peer *remote, bc_proto_msg **out)
         if(strcmp(header.command, "ping") == 0) {
             *out = calloc(1, sizeof(bc_msg_ping));
             bc_msg_ping *ping = (bc_msg_ping *) *out;
-            ping->type = BC_PROTO_PING;
-            bc_proto_ping_deserialize(ping, &serial_msg);
+            ping->type = BC_MSG_PING;
+            bc_msg_ping_deserialize(ping, &serial_msg);
         } else if(strcmp(header.command, "pong") == 0) {
             *out = calloc(1, sizeof(bc_msg_pong));
             bc_msg_pong *pong = (bc_msg_pong *) *out;
-            pong->type = BC_PROTO_PONG;
-            bc_proto_pong_deserialize(pong, &serial_msg);
+            pong->type = BC_MSG_PONG;
+            bc_msg_pong_deserialize(pong, &serial_msg);
         } else if(strcmp(header.command, "version") == 0) {
             *out = calloc(1, sizeof(bc_msg_version));
             bc_msg_version *version = (bc_msg_version *) *out;
-            version->type = BC_PROTO_VERSION;
-            bc_proto_version_deserialize(version, &serial_msg);
+            version->type = BC_MSG_VERSION;
+            bc_msg_version_deserialize(version, &serial_msg);
         } else if(strcmp(header.command, "verack") == 0) {
             *out = calloc(1, sizeof(bc_msg_verack));
             bc_msg_verack *verack = (bc_msg_verack *) *out;
-            verack->type = BC_PROTO_VERACK;
+            verack->type = BC_MSG_VERACK;
         } else {
             printf("%s [TODO]\n", header.command);
         }

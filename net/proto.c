@@ -37,7 +37,7 @@ static uint64_t switch_endian_64(uint64_t val)
 }
 */
 
-void bc_proto_msg_destroy(bc_proto_msg *msg)
+void bc_msg_destroy(bc_msg *msg)
 {
     free(msg);
 }
@@ -134,9 +134,25 @@ void bc_proto_net_addr_print(bc_proto_net_addr *n)
 }
 
 
-/////////////////////////////// PING //////////////////////////////////
+//////////////////// Variable length fields //////////////////////////
 
-void bc_proto_ping_serialize(bc_msg_ping *msg, serial_buffer *buf)
+void bc_proto_varint_deserialize(uint64_t *out, serial_buffer *buf)
+{
+    uint8_t first_byte = serial_buffer_pop_u8(buf);
+    if(first_byte < 0xfd) {
+        *out = first_byte;
+    } else if(first_byte == 0xfd) {
+        *out = serial_buffer_pop_u16(buf);
+    } else if(first_byte == 0xfe) {
+        *out = serial_buffer_pop_u32(buf);
+    } else if(first_byte == 0xff) {
+        *out = serial_buffer_pop_u64(buf);
+    }
+}
+
+/////////////////////////////// Ping //////////////////////////////////
+
+void bc_msg_ping_serialize(bc_msg_ping *msg, serial_buffer *buf)
 {
     buf->size = MESSAGE_HEADER_LEN;
     serial_buffer_push_u32(buf, msg->nonce);
@@ -146,20 +162,20 @@ void bc_proto_ping_serialize(bc_msg_ping *msg, serial_buffer *buf)
     bc_proto_serialize_header(buf, "ping");
 }
 
-void bc_proto_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf)
+void bc_msg_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf)
 {
     msg->nonce = serial_buffer_pop_u64(buf);
 }
 
-void bc_proto_ping_print(bc_msg_ping *msg)
+void bc_msg_ping_print(bc_msg_ping *msg)
 {
     printf("ping {\n\tNonce: %lx,\n}\n", msg->nonce);
 }
 
 
-/////////////////////////////// PONG //////////////////////////////////
+/////////////////////////////// Pong //////////////////////////////////
 
-void bc_proto_pong_serialize(bc_msg_pong *msg, serial_buffer *buf)
+void bc_msg_pong_serialize(bc_msg_pong *msg, serial_buffer *buf)
 {
     buf->next += MESSAGE_HEADER_LEN;
     serial_buffer_push_u64(buf, msg->nonce);
@@ -169,35 +185,33 @@ void bc_proto_pong_serialize(bc_msg_pong *msg, serial_buffer *buf)
     bc_proto_serialize_header(buf, "pong");
 }
 
-void bc_proto_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf)
+void bc_msg_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf)
 {
     msg->nonce = serial_buffer_pop_u64(buf);
 }
 
-void bc_proto_pong_print(bc_msg_pong *msg)
+void bc_msg_pong_print(bc_msg_pong *msg)
 {
     printf("pong {\n\tNonce: %lx,\n}\n", msg->nonce);
 }
 
 
-///////////////////////////// VERACK ////////////////////////////////////
+///////////////////////////// Verack ////////////////////////////////////
 
-//void bc_proto_verack_send(bc_socket *socket)
-void bc_proto_verack_serialize(serial_buffer *buf)
+void bc_msg_verack_serialize(serial_buffer *buf)
 {
     bc_proto_serialize_header(buf, "verack");
 }
 
-void bc_proto_verack_print()
+void bc_msg_verack_print()
 {
     printf("verack\n");
 }
 
 
-/////////////////////////////// VERSION ///////////////////////////////
+/////////////////////////////// Version ///////////////////////////////
 
-//void bc_proto_version_send(bc_socket *socket, bc_msg_version *msg)
-void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
+void bc_msg_version_serialize(bc_msg_version *msg, serial_buffer *buf)
 {
     buf->next += MESSAGE_HEADER_LEN;
     
@@ -221,7 +235,7 @@ void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf)
     bc_proto_serialize_header(buf, "version");
 }
 
-void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
+void bc_msg_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
 {
     msg->version = serial_buffer_pop_u32(buf);
     msg->services = serial_buffer_pop_u64(buf);
@@ -245,7 +259,7 @@ void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf)
     msg->relay = serial_buffer_pop_u8(buf);
 }
 
-void bc_proto_version_print(bc_msg_version *msg)
+void bc_msg_version_print(bc_msg_version *msg)
 {
     printf("version {\n\tVersion: %d,\n\tServices: %ld,\n\tTimestamp: %ld\n",
             msg->version, msg->services, msg->timestamp);

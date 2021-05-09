@@ -18,14 +18,6 @@ typedef struct bc_proto_net_addr {
 
 void bc_proto_net_addr_print(bc_proto_net_addr *n);
 
-typedef enum bc_proto_msg_type {
-    BC_PROTO_INVALID = 0, // In case a type is zero-initialized
-    BC_PROTO_PING,
-    BC_PROTO_PONG,
-    BC_PROTO_VERACK,
-    BC_PROTO_VERSION,
-} bc_proto_msg_type;
-
 typedef struct bc_proto_header {
     uint32_t magic;
     char     command[12];
@@ -36,50 +28,82 @@ typedef struct bc_proto_header {
 void bc_proto_serialize_header(serial_buffer *message, const char *cmd);
 void bc_proto_deserialize_header(serial_buffer *msg, bc_proto_header *header);
 
-// The first member of every derived message is a bc_proto_msg_type.
+
+//////////////////// Variable length fields ///////////////////////
+
+void bc_proto_varint_deserialize();
+
+///////////////////////////// Msg //////////////////////////////
+
+typedef enum bc_msg_type {
+    BC_MSG_INVALID = 0, // In case a type is zero-initialized
+    BC_MSG_INV,
+    BC_MSG_PING,
+    BC_MSG_PONG,
+    BC_MSG_VERACK,
+    BC_MSG_VERSION,
+} bc_msg_type;
+
+// The first member of every derived message is a bc__msg_type.
 // This struct is a abstract msg which enables casting to a specific 
 // msg type at run time.
-typedef struct bc_proto_msg {
-    bc_proto_msg_type   type;
-} bc_proto_msg;
-void bc_proto_msg_destroy(bc_proto_msg *msg);
+typedef struct bc_msg {
+    bc_msg_type type;
+} bc_msg;
+void bc_msg_destroy(bc_msg *msg);
+
+////////////////////////////// Inv //////////////////////////
+
+typedef struct bc_proto_inv_vec {
+    uint32_t type;  // TODO Make that an enum
+    char hash[32];
+} bc_proto_inv_vec;
+
+typedef struct bc_msg_inv {
+    bc_msg_type type;
+    uint64_t count;
+    bc_proto_inv_vec *inv_vec;  // TODO Memory Leak here
+} bc_msg_inv;
+
+void bc_proto_inv_deserialize(bc_msg_inv *msg, serial_buffer *buf);
+void bc_proto_inv_print(bc_msg_inv *msg);
 
 ////////////////////////////// Ping //////////////////////////
 
 typedef struct bc_msg_ping {
-    bc_proto_msg_type type;
+    bc_msg_type type;
     uint64_t nonce;
 } bc_msg_ping;
 
-void bc_proto_ping_serialize(bc_msg_ping *msg, serial_buffer *buf);
-void bc_proto_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf);
-void bc_proto_ping_print(bc_msg_ping *msg);
+void bc_msg_ping_serialize(bc_msg_ping *msg, serial_buffer *buf);
+void bc_msg_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf);
+void bc_msg_ping_print(bc_msg_ping *msg);
 
 ////////////////////////////// Pong //////////////////////////
 
 typedef struct bc_msg_pong {
-    bc_proto_msg_type type;
+    bc_msg_type type;
     uint64_t nonce;
 } bc_msg_pong;
 
-void bc_proto_pong_serialize(bc_msg_pong *msg, serial_buffer *buf);
-void bc_proto_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf);
-void bc_proto_pong_print(bc_msg_pong *msg);
+void bc_msg_pong_serialize(bc_msg_pong *msg, serial_buffer *buf);
+void bc_msg_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf);
+void bc_msg_pong_print(bc_msg_pong *msg);
 
 ////////////////////////////// Verack ////////////////////////
 typedef struct bc_msg_verack {
-    bc_proto_msg_type type; // A verack msg is just a header
+    bc_msg_type type; // A verack msg is just a header
 } bc_msg_verack;
 
 
-void bc_proto_verack_serialize(serial_buffer *buf);
-void bc_proto_verack_print();
+void bc_msg_verack_serialize(serial_buffer *buf);
+void bc_msg_verack_print();
 
 
 ////////////////////////////// Version ///////////////////////////
 typedef struct bc_msg_version {
     // Type has to be the first element to allow casting 
-    bc_proto_msg_type type;
+    bc_msg_type type;
     uint32_t          version;
     uint64_t          services;
     uint64_t          timestamp;
@@ -97,8 +121,8 @@ typedef struct bc_msg_version {
     bool              relay;
 } bc_msg_version;
 
-void bc_proto_version_serialize(bc_msg_version *msg, serial_buffer *buf);
-void bc_proto_version_deserialize(bc_msg_version *msg, serial_buffer *buf);
-void bc_proto_version_print(bc_msg_version *msg);
+void bc_msg_version_serialize(bc_msg_version *msg, serial_buffer *buf);
+void bc_msg_version_deserialize(bc_msg_version *msg, serial_buffer *buf);
+void bc_msg_version_print(bc_msg_version *msg);
 
 #endif

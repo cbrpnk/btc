@@ -113,3 +113,23 @@ void serial_buffer_pop_mem(void *val, size_t len, serial_buffer *buf)
     memcpy(val, buf->data + buf->next, len);
     buf->next += len;
 }
+
+uint8_t serial_buffer_peek_u8(serial_buffer *buf)
+{
+    return *((uint8_t*) (buf->data + buf->next));
+}
+
+uint16_t serial_buffer_peek_u16(serial_buffer *buf)
+{
+    return *((uint16_t*) (buf->data + buf->next));
+}
+
+uint32_t serial_buffer_peek_u32(serial_buffer *buf)
+{
+    return *((uint32_t*) (buf->data + buf->next));
+}
+
+uint64_t serial_buffer_peek_u64(serial_buffer *buf)
+{
+    return *((uint64_t*) (buf->data + buf->next));
+}
