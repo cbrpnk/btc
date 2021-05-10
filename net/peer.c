@@ -28,9 +28,20 @@ static void handle_msg_pong(bc_msg_pong *msg)
     bc_msg_pong_print(msg);
 }
 
-static void handle_msg_verack()
+static void handle_msg_sendcmpct(bc_msg_sendcmpct *msg)
+{
+    bc_msg_sendcmpct_print(msg);
+}
+
+static void handle_msg_verack(bc_peer *peer)
 {
     bc_msg_verack_print();
+    bc_msg_sendcmpct *cmpct = bc_msg_sendcmpct_new();
+    cmpct->is_compact = 1;
+    cmpct->version = 2;
+    bc_peer_send(peer, (bc_msg *) cmpct);
+    bc_msg_sendcmpct_print(cmpct);
+    bc_msg_sendcmpct_destroy(cmpct);
 }
 
 static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
@@ -156,8 +167,11 @@ void bc_peer_recv(bc_peer *remote)
                 case BC_MSG_PONG:
                     handle_msg_pong((bc_msg_pong *) msg);
                     break;
+                case BC_MSG_SENDCMPCT:
+                    handle_msg_sendcmpct((bc_msg_sendcmpct *) msg);
+                    break;
                 case BC_MSG_VERACK:
-                    handle_msg_verack((bc_msg_verack *) msg);
+                    handle_msg_verack(remote);
                     break;
                 case BC_MSG_VERSION:
                     handle_msg_version(remote, (bc_msg_version *) msg);

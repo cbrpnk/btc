@@ -40,6 +40,7 @@ typedef enum bc_msg_type {
     BC_MSG_INV,
     BC_MSG_PING,
     BC_MSG_PONG,
+    BC_MSG_SENDCMPCT,
     BC_MSG_VERACK,
     BC_MSG_VERSION,
 } bc_msg_type;
@@ -109,6 +110,20 @@ void bc_msg_pong_destroy(bc_msg_pong *msg);
 void bc_msg_pong_serialize(bc_msg_pong *msg, serial_buffer *buf);
 void bc_msg_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf);
 void bc_msg_pong_print(bc_msg_pong *msg);
+
+////////////////////////// Sendcmpct //////////////////////////
+
+typedef struct bc_msg_sendcmpct {
+    bc_msg_type type;
+    uint8_t is_compact;
+    uint64_t version;
+} bc_msg_sendcmpct;
+
+bc_msg_sendcmpct *bc_msg_sendcmpct_new();
+void bc_msg_sendcmpct_destroy(bc_msg_sendcmpct *msg);
+void bc_msg_sendcmpct_deserialize(bc_msg_sendcmpct *msg, serial_buffer *buf);
+void bc_msg_sendcmpct_print(bc_msg_sendcmpct *msg);
+
 
 ////////////////////////////// Verack ////////////////////////
 typedef struct bc_msg_verack {

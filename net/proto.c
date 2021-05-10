@@ -161,6 +161,9 @@ bc_msg *bc_msg_new_from_buffer(serial_buffer *buf)
     } else if(strcmp(header.command, "pong") == 0) {
         msg = (bc_msg *) bc_msg_pong_new();
         bc_msg_pong_deserialize((bc_msg_pong *) msg, buf);
+    } else if(strcmp(header.command, "sendcmpct") == 0) {
+        msg = (bc_msg *) bc_msg_sendcmpct_new();
+        bc_msg_sendcmpct_deserialize((bc_msg_sendcmpct *) msg, buf);
     } else if(strcmp(header.command, "version") == 0) {
         msg = (bc_msg *) bc_msg_version_new();
         bc_msg_version_deserialize((bc_msg_version *) msg, buf);
@@ -185,6 +188,9 @@ void bc_msg_destroy(bc_msg *msg)
     case BC_MSG_PONG:
         bc_msg_pong_destroy((bc_msg_pong *) msg);
         break;
+    case BC_MSG_SENDCMPCT:
+        bc_msg_sendcmpct_destroy((bc_msg_sendcmpct *) msg);
+        break;
     case BC_MSG_VERACK:
         bc_msg_verack_destroy((bc_msg_verack *) msg);
         break;
@@ -203,6 +209,9 @@ void bc_msg_serialize(bc_msg *msg, serial_buffer *buf)
         break;
     case BC_MSG_PONG:
         bc_msg_pong_serialize((bc_msg_pong *) msg, buf);
+        break;
+    case BC_MSG_SENDCMPCT:
+        bc_msg_sendcmpct_serialize((bc_msg_sendcmpct *) msg, buf);
         break;
     case BC_MSG_VERACK:
         bc_msg_verack_serialize(buf);
@@ -278,7 +287,7 @@ void bc_msg_inv_print(bc_msg_inv *msg)
         // Print Hash
         printf("\t\thash: ");
         for(int j=31; j>=0; --j) {
-            printf("%x", (uint8_t) msg->vec[i].hash[j]);
+            printf("%02x", (uint8_t) msg->vec[i].hash[j]);
         }
         printf(",\n\t}\n");
     }
@@ -352,6 +361,44 @@ void bc_msg_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf)
 void bc_msg_pong_print(bc_msg_pong *msg)
 {
     printf("pong {\n\tNonce: %lx,\n}\n", msg->nonce);
+}
+
+
+///////////////////////////// Sendcmpct //////////////////////////////////
+
+bc_msg_sendcmpct *bc_msg_sendcmpct_new()
+{
+    bc_msg_sendcmpct *msg = calloc(1, sizeof(bc_msg_sendcmpct));
+    msg->type = BC_MSG_SENDCMPCT;
+    return msg;
+}
+
+void bc_msg_sendcmpct_destroy(bc_msg_sendcmpct *msg)
+{
+    free(msg);
+}
+
+void bc_msg_sendcmpct_serialize(bc_msg_sendcmpct *msg, serial_buffer *buf)
+{
+    buf->next += MESSAGE_HEADER_LEN;
+    serial_buffer_push_u8(buf, msg->is_compact);
+    serial_buffer_push_u64(buf, msg->version);
+    
+    // Reset write head
+    buf->next = 0;
+    bc_proto_serialize_header(buf, "sendcmpct");
+}
+
+void bc_msg_sendcmpct_deserialize(bc_msg_sendcmpct *msg, serial_buffer *buf)
+{
+    msg->is_compact = serial_buffer_pop_u8(buf);
+    msg->version = serial_buffer_pop_u64(buf);
+}
+
+void bc_msg_sendcmpct_print(bc_msg_sendcmpct *msg)
+{
+    printf("sendcmpct {\n\tCompact: %d,\n\tVersion: %ld\n}\n",
+            msg->is_compact, msg->version);
 }
 
 
