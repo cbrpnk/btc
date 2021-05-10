@@ -50,23 +50,39 @@ typedef enum bc_msg_type {
 typedef struct bc_msg {
     bc_msg_type type;
 } bc_msg;
+
+bc_msg *bc_msg_new_from_buffer(serial_buffer *buf);
 void bc_msg_destroy(bc_msg *msg);
+void bc_msg_serialize(bc_msg *msg, serial_buffer *buf);
 
 ////////////////////////////// Inv //////////////////////////
 
-typedef struct bc_proto_inv_vec {
-    uint32_t type;  // TODO Make that an enum
+typedef enum bc_msg_inv_type {
+    BC_MSG_INV_ERROR = 0,
+    BC_MSG_INV_TX = 1,
+    BC_MSG_INV_BLOCK = 2,
+    BC_MSG_INV_FILTERED_BLOCK = 3,
+    BC_MSG_INV_CMPCT_BLOCK = 4,
+    BC_MSG_INV_WITNESS_TX = 0x40000001,
+    BC_MSG_INV_WITNESS_BLOCK = 0x40000002,
+    BC_MSG_INV_WITNESS_FILTERED_BLOCK = 0x40000003
+} bc_msg_inv_type;
+
+typedef struct bc_msg_inv_vec {
+    bc_msg_inv_type type;  // TODO Make that an enum
     char hash[32];
-} bc_proto_inv_vec;
+} bc_msg_inv_vec;
 
 typedef struct bc_msg_inv {
     bc_msg_type type;
     uint64_t count;
-    bc_proto_inv_vec *inv_vec;  // TODO Memory Leak here
+    bc_msg_inv_vec *vec;
 } bc_msg_inv;
 
-void bc_proto_inv_deserialize(bc_msg_inv *msg, serial_buffer *buf);
-void bc_proto_inv_print(bc_msg_inv *msg);
+bc_msg_inv *bc_msg_inv_new();
+void bc_msg_inv_destroy(bc_msg_inv *msg);
+void bc_msg_inv_deserialize(bc_msg_inv *msg, serial_buffer *buf);
+void bc_msg_inv_print(bc_msg_inv *msg);
 
 ////////////////////////////// Ping //////////////////////////
 
@@ -75,6 +91,8 @@ typedef struct bc_msg_ping {
     uint64_t nonce;
 } bc_msg_ping;
 
+bc_msg_ping *bc_msg_ping_new();
+void bc_msg_ping_destroy(bc_msg_ping *msg);
 void bc_msg_ping_serialize(bc_msg_ping *msg, serial_buffer *buf);
 void bc_msg_ping_deserialize(bc_msg_ping *msg, serial_buffer *buf);
 void bc_msg_ping_print(bc_msg_ping *msg);
@@ -86,6 +104,8 @@ typedef struct bc_msg_pong {
     uint64_t nonce;
 } bc_msg_pong;
 
+bc_msg_pong *bc_msg_pong_new();
+void bc_msg_pong_destroy(bc_msg_pong *msg);
 void bc_msg_pong_serialize(bc_msg_pong *msg, serial_buffer *buf);
 void bc_msg_pong_deserialize(bc_msg_pong *msg, serial_buffer *buf);
 void bc_msg_pong_print(bc_msg_pong *msg);
@@ -96,6 +116,8 @@ typedef struct bc_msg_verack {
 } bc_msg_verack;
 
 
+bc_msg_verack *bc_msg_verack_new();
+void bc_msg_verack_destroy(bc_msg_verack *msg);
 void bc_msg_verack_serialize(serial_buffer *buf);
 void bc_msg_verack_print();
 
@@ -121,6 +143,8 @@ typedef struct bc_msg_version {
     bool              relay;
 } bc_msg_version;
 
+bc_msg_version *bc_msg_version_new();
+void bc_msg_version_destroy(bc_msg_version *msg);
 void bc_msg_version_serialize(bc_msg_version *msg, serial_buffer *buf);
 void bc_msg_version_deserialize(bc_msg_version *msg, serial_buffer *buf);
 void bc_msg_version_print(bc_msg_version *msg);

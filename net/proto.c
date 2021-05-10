@@ -37,11 +37,6 @@ static uint64_t switch_endian_64(uint64_t val)
 }
 */
 
-void bc_msg_destroy(bc_msg *msg)
-{
-    free(msg);
-}
-
 // Bitcoin special field serialization
 static void serialize_string(serial_buffer *buf, const char *str)
 {
@@ -150,7 +145,159 @@ void bc_proto_varint_deserialize(uint64_t *out, serial_buffer *buf)
     }
 }
 
+/////////////////////////////// Msg /////////////////////////////////
+
+bc_msg *bc_msg_new_from_buffer(serial_buffer *buf)
+{
+    bc_msg *msg = NULL;
+    bc_proto_header header;
+    bc_proto_deserialize_header(buf, &header);
+    if(strcmp(header.command, "inv") == 0) {
+        msg = (bc_msg *) bc_msg_inv_new();
+        bc_msg_inv_deserialize((bc_msg_inv *) msg, buf);
+    } else if(strcmp(header.command, "ping") == 0) {
+        msg = (bc_msg *) bc_msg_ping_new();
+        bc_msg_ping_deserialize((bc_msg_ping *) msg, buf);
+    } else if(strcmp(header.command, "pong") == 0) {
+        msg = (bc_msg *) bc_msg_pong_new();
+        bc_msg_pong_deserialize((bc_msg_pong *) msg, buf);
+    } else if(strcmp(header.command, "version") == 0) {
+        msg = (bc_msg *) bc_msg_version_new();
+        bc_msg_version_deserialize((bc_msg_version *) msg, buf);
+    } else if(strcmp(header.command, "verack") == 0) {
+        msg = (bc_msg *) bc_msg_verack_new();
+    } else {
+        printf("%s [TODO]\n", header.command);
+    }
+    
+    return msg;
+}
+
+void bc_msg_destroy(bc_msg *msg)
+{
+    switch(msg->type) {
+    case BC_MSG_INV:
+        bc_msg_inv_destroy((bc_msg_inv *) msg);
+        break;
+    case BC_MSG_PING:
+        bc_msg_ping_destroy((bc_msg_ping *) msg);
+        break;
+    case BC_MSG_PONG:
+        bc_msg_pong_destroy((bc_msg_pong *) msg);
+        break;
+    case BC_MSG_VERACK:
+        bc_msg_verack_destroy((bc_msg_verack *) msg);
+        break;
+    case BC_MSG_VERSION:
+        bc_msg_version_destroy((bc_msg_version *) msg);
+        break;
+    }
+}
+
+void bc_msg_serialize(bc_msg *msg, serial_buffer *buf)
+{
+    switch(msg->type) {
+    // TODO BC_MSG_INV
+    case BC_MSG_PING:
+        bc_msg_ping_serialize((bc_msg_ping *) msg, buf);
+        break;
+    case BC_MSG_PONG:
+        bc_msg_pong_serialize((bc_msg_pong *) msg, buf);
+        break;
+    case BC_MSG_VERACK:
+        bc_msg_verack_serialize(buf);
+        break;
+    case BC_MSG_VERSION:
+        bc_msg_version_serialize((bc_msg_version *) msg, buf);
+        break;
+    }
+}
+
+/////////////////////////////// Inv ///////////////////////////////////
+
+bc_msg_inv *bc_msg_inv_new()
+{
+    bc_msg_inv *msg = calloc(1, sizeof(bc_msg_inv));
+    msg->type = BC_MSG_INV;
+    msg->count = 0;
+    msg->vec = NULL;
+    return msg;
+}
+
+void bc_msg_inv_destroy(bc_msg_inv *msg)
+{
+    if(msg->vec) {
+        free(msg->vec);
+    }
+    free(msg);
+}
+void bc_msg_inv_deserialize(bc_msg_inv *msg, serial_buffer *buf)
+{
+    bc_proto_varint_deserialize(&msg->count, buf);
+    msg->vec = malloc(sizeof(bc_msg_inv_vec) * msg->count);
+    for(uint64_t i=0; i<msg->count; ++i) {
+        msg->vec[i].type = serial_buffer_pop_u32(buf);
+        serial_buffer_pop_mem(&(msg->vec[i].hash), 32, buf);
+    }
+}
+
+void bc_msg_inv_print(bc_msg_inv *msg)
+{
+    printf("inv {\n\tcount: %ld,\n\tvec: {\n", msg->count);
+    for(uint64_t i=0; i<msg->count; ++i) {
+        // Print Type
+        printf("\t\ttype: ");
+        switch(msg->type) {
+        case BC_MSG_INV_ERROR:
+            printf("ERROR");
+            break;
+        case BC_MSG_INV_TX:
+            printf("TX");
+            break;
+        case BC_MSG_INV_BLOCK:
+            printf("BLOCK");
+            break;
+        case BC_MSG_INV_FILTERED_BLOCK:
+            printf("FILTERED_BLOCK");
+            break;
+        case BC_MSG_INV_CMPCT_BLOCK:
+            printf("CMPCT_BLOCK");
+            break;
+        case BC_MSG_INV_WITNESS_TX:
+            printf("WITNESS_TX");
+            break;
+        case BC_MSG_INV_WITNESS_BLOCK:
+            printf("WITNESS_BLOCK");
+            break;
+        case BC_MSG_INV_WITNESS_FILTERED_BLOCK:
+            printf("WITNESS_FILTERED_BLOCK");
+            break;
+        }
+        printf(",\n");
+        
+        // Print Hash
+        printf("\t\thash: ");
+        for(int j=31; j>=0; --j) {
+            printf("%x", (uint8_t) msg->vec[i].hash[j]);
+        }
+        printf(",\n\t}\n");
+    }
+    printf("}\n");
+}
+
 /////////////////////////////// Ping //////////////////////////////////
+
+bc_msg_ping *bc_msg_ping_new()
+{
+    bc_msg_ping *msg = calloc(1, sizeof(bc_msg_ping));
+    msg->type = BC_MSG_PING;
+    return msg;
+}
+
+void bc_msg_ping_destroy(bc_msg_ping *msg)
+{
+    free(msg);
+}
 
 void bc_msg_ping_serialize(bc_msg_ping *msg, serial_buffer *buf)
 {
@@ -175,6 +322,18 @@ void bc_msg_ping_print(bc_msg_ping *msg)
 
 /////////////////////////////// Pong //////////////////////////////////
 
+bc_msg_pong *bc_msg_pong_new()
+{
+    bc_msg_pong *msg = calloc(1, sizeof(bc_msg_pong));
+    msg->type = BC_MSG_PONG;
+    return msg;
+}
+
+void bc_msg_pong_destroy(bc_msg_pong *msg)
+{
+    free(msg);
+}
+
 void bc_msg_pong_serialize(bc_msg_pong *msg, serial_buffer *buf)
 {
     buf->next += MESSAGE_HEADER_LEN;
@@ -198,6 +357,18 @@ void bc_msg_pong_print(bc_msg_pong *msg)
 
 ///////////////////////////// Verack ////////////////////////////////////
 
+bc_msg_verack *bc_msg_verack_new()
+{
+    bc_msg_verack *msg = calloc(1, sizeof(bc_msg_verack));
+    msg->type = BC_MSG_VERACK;
+    return msg;
+}
+
+void bc_msg_verack_destroy(bc_msg_verack *msg)
+{
+    free(msg);
+}
+
 void bc_msg_verack_serialize(serial_buffer *buf)
 {
     bc_proto_serialize_header(buf, "verack");
@@ -210,6 +381,18 @@ void bc_msg_verack_print()
 
 
 /////////////////////////////// Version ///////////////////////////////
+
+bc_msg_version *bc_msg_version_new()
+{
+    bc_msg_version *msg = calloc(1, sizeof(bc_msg_version));
+    msg->type = BC_MSG_VERSION;
+    return msg;
+}
+
+void bc_msg_version_destroy(bc_msg_version *msg)
+{
+    free(msg);
+}
 
 void bc_msg_version_serialize(bc_msg_version *msg, serial_buffer *buf)
 {
