@@ -97,7 +97,7 @@ void bc_proto_serialize_header(serial_buffer *message, const char *cmd)
     }
     
     // Magic number for testnet
-    serial_buffer_push_u32(message, BC_TESTNET_MAGIC_NUM);
+    serial_buffer_push_u32(message, BC_MAGIC_NUM);
     // TODO Test if cmd length is smaller than 12
     // Command
     for(size_t i=0; i<strlen(cmd); ++i) {
