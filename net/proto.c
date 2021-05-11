@@ -256,7 +256,7 @@ void bc_msg_inv_print(bc_msg_inv *msg)
     for(uint64_t i=0; i<msg->count; ++i) {
         // Print Type
         printf("\t\ttype: ");
-        switch(msg->type) {
+        switch(msg->vec[i].type) {
         case BC_MSG_INV_ERROR:
             printf("ERROR");
             break;

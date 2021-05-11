@@ -37,7 +37,7 @@ static void handle_msg_verack(bc_peer *peer)
 {
     bc_msg_verack_print();
     bc_msg_sendcmpct *cmpct = bc_msg_sendcmpct_new();
-    cmpct->is_compact = 1;
+    cmpct->is_compact = 0;
     cmpct->version = 2;
     bc_peer_send(peer, (bc_msg *) cmpct);
     bc_msg_sendcmpct_print(cmpct);
@@ -116,39 +116,39 @@ void bc_peer_send(bc_peer *remote, bc_msg *msg)
     serial_buffer_destroy(&buf);
 }
 
+// Fill buf with exactly len bytes of the socket
+static int recvn(bc_socket *socket, uint8_t *buf, size_t len)
+{
+    size_t recved_len = 0;
+    while(recved_len < len) {
+        recved_len += bc_socket_recv(socket, buf+recved_len, len-recved_len, 0);
+    }
+}
+
 static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
 {
-    // Check if esp32 has a PEEK flag for recv
+    // TODO Make it so we just have serial_buffers no raw_msg
+    uint8_t *raw_msg = malloc(MESSAGE_HEADER_LEN);
     
-    unsigned char raw_msg[2000] = {0};  // TODO This is hardcoded
+    // Read header
+    recvn(socket, raw_msg, MESSAGE_HEADER_LEN);
+    serial_buffer serial_header;
+    serial_buffer_init_from_data(&serial_header, raw_msg,
+                                    MESSAGE_HEADER_LEN);
+    bc_proto_header header;
+    bc_proto_deserialize_header(&serial_header, &header);
     
-    // Peek for a message header
-    size_t peek_len = 0;
-    peek_len = bc_socket_recv(socket, raw_msg, MESSAGE_HEADER_LEN,
-                                    MSG_PEEK);
-    if(peek_len == 24) {
-        serial_buffer serial_response;
-        serial_buffer_init_from_data(&serial_response, raw_msg,
-                                        MESSAGE_HEADER_LEN);
-        bc_proto_header header;
-        bc_proto_deserialize_header(&serial_response, &header);
-        
-        // Peek for a full message
-        size_t message_len = MESSAGE_HEADER_LEN + header.payload_len;
-        peek_len = bc_socket_recv(socket, raw_msg,
-                                  MESSAGE_HEADER_LEN+header.payload_len,
-                                  MSG_PEEK);
-        if(peek_len == message_len) {
-            bc_socket_recv(socket, raw_msg,
-                           MESSAGE_HEADER_LEN+header.payload_len, 0);
-            serial_buffer_init_from_data(out, raw_msg,
-                                         message_len);
-            return message_len;
-        }
-        serial_buffer_destroy(&serial_response);
-    }
+    // Compute full message len
+    size_t msg_len = MESSAGE_HEADER_LEN + header.payload_len;
     
-    return 0; // 0 bytes read
+    // Read payload
+    raw_msg = realloc(raw_msg, msg_len);
+    recvn(socket, raw_msg+MESSAGE_HEADER_LEN, header.payload_len);
+    
+    serial_buffer_init_from_data(out, raw_msg, msg_len);
+    
+    free(raw_msg);
+    return msg_len;
 }
 
 void bc_peer_recv(bc_peer *remote)
