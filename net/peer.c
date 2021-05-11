@@ -54,6 +54,40 @@ static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
     bc_msg_verack_print();
 }
 
+// Fill buf with exactly len bytes of the socket
+static int recvn(bc_socket *socket, uint8_t *buf, size_t len)
+{
+    size_t recved_len = 0;
+    while(recved_len < len) {
+        recved_len += bc_socket_recv(socket, buf+recved_len, len-recved_len, 0);
+    }
+}
+
+// Reads one full message
+static int recv_msg(bc_socket *socket, serial_buffer *out)
+{
+    uint8_t *raw_msg = malloc(MESSAGE_HEADER_LEN);
+    
+    // Read header
+    recvn(socket, raw_msg, MESSAGE_HEADER_LEN);
+    serial_buffer serial_header;
+    serial_buffer_init_from_data(&serial_header, raw_msg,
+                                    MESSAGE_HEADER_LEN);
+    bc_proto_header header;
+    bc_proto_deserialize_header(&serial_header, &header);
+    
+    // Compute full message len
+    size_t msg_len = MESSAGE_HEADER_LEN + header.payload_len;
+    
+    // Read payload
+    raw_msg = realloc(raw_msg, msg_len);
+    recvn(socket, raw_msg+MESSAGE_HEADER_LEN, header.payload_len);
+    
+    serial_buffer_init_from_data(out, raw_msg, msg_len);
+    
+    free(raw_msg);
+    return msg_len;
+}
 
 // TODO There should not be a handshake function. The peer should
 // send a version message, then enter the non-blocking recv/process loop.
@@ -85,11 +119,38 @@ static void handshake(bc_peer *peer)
     bc_msg_version_print(&msg);
     bc_peer_send(peer, (bc_msg *) &msg);
     
-    // Main loop
-    // TODO Peer should only handle version verack ping pong
-    // Everything else should be handeled by upper layer
     while(1) {
-        bc_peer_recv(peer);
+        serial_buffer serial_msg;
+        serial_buffer_init(&serial_msg, 64);
+        if(recv_msg(&peer->socket, &serial_msg)) {
+            bc_msg *msg = bc_msg_new_from_buffer(&serial_msg);
+            if(msg) {
+                switch(msg->type) {
+                    case BC_MSG_INV:
+                        handle_msg_inv((bc_msg_inv *) msg);
+                        break;
+                    case BC_MSG_PING:
+                        handle_msg_ping(peer, (bc_msg_ping *) msg);
+                        break;
+                    case BC_MSG_PONG:
+                        handle_msg_pong((bc_msg_pong *) msg);
+                        break;
+                    case BC_MSG_SENDCMPCT:
+                        handle_msg_sendcmpct((bc_msg_sendcmpct *) msg);
+                        break;
+                    case BC_MSG_VERACK:
+                        handle_msg_verack(peer);
+                        break;
+                    case BC_MSG_VERSION:
+                        handle_msg_version(peer, (bc_msg_version *) msg);
+                        break;
+                    default:
+                        printf("Unknown message\n");
+                }
+                bc_msg_destroy(msg);
+            }
+        }
+        serial_buffer_destroy(&serial_msg);
     }
 }
 
@@ -116,71 +177,10 @@ void bc_peer_send(bc_peer *remote, bc_msg *msg)
     serial_buffer_destroy(&buf);
 }
 
-// Fill buf with exactly len bytes of the socket
-static int recvn(bc_socket *socket, uint8_t *buf, size_t len)
+/*
+void bc_peer_recv(bc_peer *remote, serial_buffer *serial_msg)
 {
-    size_t recved_len = 0;
-    while(recved_len < len) {
-        recved_len += bc_socket_recv(socket, buf+recved_len, len-recved_len, 0);
-    }
+    //serial_buffer serial_msg;
 }
+*/
 
-static int recv_serial_msg(bc_socket *socket, serial_buffer *out)
-{
-    // TODO Make it so we just have serial_buffers no raw_msg
-    uint8_t *raw_msg = malloc(MESSAGE_HEADER_LEN);
-    
-    // Read header
-    recvn(socket, raw_msg, MESSAGE_HEADER_LEN);
-    serial_buffer serial_header;
-    serial_buffer_init_from_data(&serial_header, raw_msg,
-                                    MESSAGE_HEADER_LEN);
-    bc_proto_header header;
-    bc_proto_deserialize_header(&serial_header, &header);
-    
-    // Compute full message len
-    size_t msg_len = MESSAGE_HEADER_LEN + header.payload_len;
-    
-    // Read payload
-    raw_msg = realloc(raw_msg, msg_len);
-    recvn(socket, raw_msg+MESSAGE_HEADER_LEN, header.payload_len);
-    
-    serial_buffer_init_from_data(out, raw_msg, msg_len);
-    
-    free(raw_msg);
-    return msg_len;
-}
-
-void bc_peer_recv(bc_peer *remote)
-{
-    serial_buffer serial_msg;
-    if(recv_serial_msg(&remote->socket, &serial_msg)) {
-        bc_msg *msg = bc_msg_new_from_buffer(&serial_msg);
-        if(msg) {
-            switch(msg->type) {
-                case BC_MSG_INV:
-                    handle_msg_inv((bc_msg_inv *) msg);
-                    break;
-                case BC_MSG_PING:
-                    handle_msg_ping(remote, (bc_msg_ping *) msg);
-                    break;
-                case BC_MSG_PONG:
-                    handle_msg_pong((bc_msg_pong *) msg);
-                    break;
-                case BC_MSG_SENDCMPCT:
-                    handle_msg_sendcmpct((bc_msg_sendcmpct *) msg);
-                    break;
-                case BC_MSG_VERACK:
-                    handle_msg_verack(remote);
-                    break;
-                case BC_MSG_VERSION:
-                    handle_msg_version(remote, (bc_msg_version *) msg);
-                    break;
-                default:
-                    printf("Unknown message\n");
-            }
-            bc_msg_destroy(msg);
-        }
-        serial_buffer_destroy(&serial_msg);
-    }
-}
