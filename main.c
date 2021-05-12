@@ -15,6 +15,13 @@ int main()
     if(bc_peer_connect(&remote) < 0) {
         return -1;
     }
+    
+    while(1) {
+        bc_msg *msg;
+        bc_peer_recv(&remote, &msg);
+        bc_msg_destroy(msg);
+    }
+    
     bc_peer_disconnect(&remote);
     return 0;
 }
