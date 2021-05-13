@@ -55,6 +55,7 @@ typedef struct bc_msg {
 bc_msg *bc_msg_new_from_buffer(serial_buffer *buf);
 void bc_msg_destroy(bc_msg *msg);
 void bc_msg_serialize(bc_msg *msg, serial_buffer *buf);
+void bc_msg_print(bc_msg *msg);
 
 ////////////////////////////// Inv //////////////////////////
 

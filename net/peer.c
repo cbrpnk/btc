@@ -34,7 +34,6 @@ static void handshake(bc_peer *peer)
         .relay = 1
     };
     memcpy(msg.user_agent, BC_USER_AGENT, strlen(BC_USER_AGENT));
-    bc_msg_version_print(&msg);
     bc_peer_send(peer, (bc_msg *) &msg);
 }
 
@@ -54,6 +53,10 @@ int bc_peer_disconnect(bc_peer *remote)
 
 void bc_peer_send(bc_peer *remote, bc_msg *msg)
 {
+    #ifdef NET_DEBUG
+        printf("[out] => ");
+        bc_msg_print(msg);
+    #endif
     serial_buffer buf;
     serial_buffer_init(&buf, 100);
     bc_msg_serialize(msg, &buf);
@@ -97,50 +100,30 @@ static int recv_msg(bc_socket *socket, serial_buffer *out)
     free(raw_msg);
     return msg_len;
 }
-static void handle_msg_inv(bc_msg_inv *msg)
-{
-    bc_msg_inv_print(msg);
-}
 
 static void handle_msg_ping(bc_peer *peer, bc_msg_ping *msg)
 {
-    bc_msg_ping_print(msg);
     bc_msg_pong *pong = bc_msg_pong_new();
     pong->nonce = msg->nonce;
     bc_peer_send(peer, (bc_msg *) pong);
-    bc_msg_pong_print(pong);
     bc_msg_pong_destroy(pong);
-}
-
-static void handle_msg_pong(bc_msg_pong *msg)
-{
-    bc_msg_pong_print(msg);
-}
-
-static void handle_msg_sendcmpct(bc_msg_sendcmpct *msg)
-{
-    bc_msg_sendcmpct_print(msg);
 }
 
 static void handle_msg_verack(bc_peer *peer)
 {
-    bc_msg_verack_print();
     bc_msg_sendcmpct *cmpct = bc_msg_sendcmpct_new();
     cmpct->is_compact = 0;
     cmpct->version = 2;
     bc_peer_send(peer, (bc_msg *) cmpct);
-    bc_msg_sendcmpct_print(cmpct);
     bc_msg_sendcmpct_destroy(cmpct);
 }
 
 static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
 {
-    bc_msg_version_print(msg);
     bc_msg verack = {
         .type = BC_MSG_VERACK
     };
     bc_peer_send(peer, &verack);
-    bc_msg_verack_print();
 }
 
 /////////////////////////////// recv ///////////////////////////////////
@@ -151,18 +134,22 @@ void bc_peer_recv(bc_peer *peer, bc_msg **msg) {
     if(recv_msg(&peer->socket, &serial_msg)) {
         bc_msg *msg = bc_msg_new_from_buffer(&serial_msg);
         if(msg) {
+            #ifdef NET_DEBUG
+                printf("[in] <= ");
+                bc_msg_print(msg);
+            #endif
             switch(msg->type) {
                 case BC_MSG_INV:
-                    handle_msg_inv((bc_msg_inv *) msg);
+                    //handle_msg_inv((bc_msg_inv *) msg);
                     break;
                 case BC_MSG_PING:
                     handle_msg_ping(peer, (bc_msg_ping *) msg);
                     break;
                 case BC_MSG_PONG:
-                    handle_msg_pong((bc_msg_pong *) msg);
+                    //handle_msg_pong((bc_msg_pong *) msg);
                     break;
                 case BC_MSG_SENDCMPCT:
-                    handle_msg_sendcmpct((bc_msg_sendcmpct *) msg);
+                    //handle_msg_sendcmpct((bc_msg_sendcmpct *) msg);
                     break;
                 case BC_MSG_VERACK:
                     handle_msg_verack(peer);

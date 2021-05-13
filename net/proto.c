@@ -222,6 +222,30 @@ void bc_msg_serialize(bc_msg *msg, serial_buffer *buf)
     }
 }
 
+void bc_msg_print(bc_msg *msg)
+{
+    switch(msg->type) {
+    case BC_MSG_INV:
+        bc_msg_inv_print((bc_msg_inv *) msg);
+        break;
+    case BC_MSG_PING:
+        bc_msg_ping_print((bc_msg_ping *) msg);
+        break;
+    case BC_MSG_PONG:
+        bc_msg_pong_print((bc_msg_pong *) msg);
+        break;
+    case BC_MSG_SENDCMPCT:
+        bc_msg_sendcmpct_print((bc_msg_sendcmpct *) msg);
+        break;
+    case BC_MSG_VERACK:
+        bc_msg_verack_print();
+        break;
+    case BC_MSG_VERSION:
+        bc_msg_version_print((bc_msg_version *) msg);
+        break;
+    }
+}
+
 /////////////////////////////// Inv ///////////////////////////////////
 
 bc_msg_inv *bc_msg_inv_new()

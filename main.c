@@ -2,6 +2,8 @@
 #include "net/dns.h"
 #include "net/peer.h"
 
+#include <stdio.h>
+
 int main()
 {
     dns_record_a a_rec;
