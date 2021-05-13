@@ -8,6 +8,18 @@
 #include "../config.h"
 #include "../crypto/crypto.h"
 
+bc_peer *bc_peer_new(uint32_t ip, uint16_t port)
+{
+    bc_peer *peer = malloc(sizeof(bc_peer));
+    peer->ip = ip;
+    peer->port = port;
+    return peer;
+}
+
+void bc_peer_destroy(bc_peer *peer)
+{
+    free(peer);
+}
 
 static void handshake(bc_peer *peer)
 {
@@ -139,17 +151,8 @@ void bc_peer_recv(bc_peer *peer, bc_msg **msg) {
                 bc_msg_print(msg);
             #endif
             switch(msg->type) {
-                case BC_MSG_INV:
-                    //handle_msg_inv((bc_msg_inv *) msg);
-                    break;
                 case BC_MSG_PING:
                     handle_msg_ping(peer, (bc_msg_ping *) msg);
-                    break;
-                case BC_MSG_PONG:
-                    //handle_msg_pong((bc_msg_pong *) msg);
-                    break;
-                case BC_MSG_SENDCMPCT:
-                    //handle_msg_sendcmpct((bc_msg_sendcmpct *) msg);
                     break;
                 case BC_MSG_VERACK:
                     handle_msg_verack(peer);
@@ -157,10 +160,7 @@ void bc_peer_recv(bc_peer *peer, bc_msg **msg) {
                 case BC_MSG_VERSION:
                     handle_msg_version(peer, (bc_msg_version *) msg);
                     break;
-                default:
-                    printf("Unknown message\n");
             }
-            bc_msg_destroy(msg);
         }
     }
     serial_buffer_destroy(&serial_msg);
