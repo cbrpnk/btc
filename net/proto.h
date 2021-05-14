@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include "../serial_buffer.h"
+#include "../crypto/crypto.h"
 #include "socket.h"
 
 #define MESSAGE_HEADER_LEN 24
@@ -36,7 +37,6 @@ void bc_proto_varint_deserialize();
 ///////////////////////////// Msg //////////////////////////////
 
 typedef enum bc_msg_type {
-    BC_MSG_INVALID = 0, // In case a type is zero-initialized
     BC_MSG_INV,
     BC_MSG_PING,
     BC_MSG_PONG,
@@ -71,8 +71,8 @@ typedef enum bc_msg_inv_type {
 } bc_msg_inv_type;
 
 typedef struct bc_msg_inv_vec {
-    bc_msg_inv_type type;  // TODO Make that an enum
-    char hash[32];
+    bc_msg_inv_type type;
+    char hash[BC_SHA256_LEN];
 } bc_msg_inv_vec;
 
 typedef struct bc_msg_inv {
@@ -83,6 +83,7 @@ typedef struct bc_msg_inv {
 
 bc_msg_inv *bc_msg_inv_new();
 void bc_msg_inv_destroy(bc_msg_inv *msg);
+void bc_msg_inv_serialize(bc_msg_inv *msg, serial_buffer *buf);
 void bc_msg_inv_deserialize(bc_msg_inv *msg, serial_buffer *buf);
 void bc_msg_inv_print(bc_msg_inv *msg);
 
@@ -122,6 +123,7 @@ typedef struct bc_msg_sendcmpct {
 
 bc_msg_sendcmpct *bc_msg_sendcmpct_new();
 void bc_msg_sendcmpct_destroy(bc_msg_sendcmpct *msg);
+void bc_msg_sendcmpct_serialize(bc_msg_sendcmpct *msg, serial_buffer *buf);
 void bc_msg_sendcmpct_deserialize(bc_msg_sendcmpct *msg, serial_buffer *buf);
 void bc_msg_sendcmpct_print(bc_msg_sendcmpct *msg);
 

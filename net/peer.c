@@ -85,6 +85,8 @@ static int recvn(bc_socket *socket, uint8_t *buf, size_t len)
     while(recved_len < len) {
         recved_len += bc_socket_recv(socket, buf+recved_len, len-recved_len, 0);
     }
+    
+    return recved_len;
 }
 
 // Reads one full message
@@ -132,6 +134,7 @@ static void handle_msg_verack(bc_peer *peer)
 
 static void handle_msg_version(bc_peer *peer, bc_msg_version *msg)
 {
+    (void) msg;
     bc_msg verack = {
         .type = BC_MSG_VERACK
     };
@@ -144,21 +147,24 @@ void bc_peer_recv(bc_peer *peer, bc_msg **msg) {
     serial_buffer serial_msg;
     serial_buffer_init(&serial_msg, 64);
     if(recv_msg(&peer->socket, &serial_msg)) {
-        bc_msg *msg = bc_msg_new_from_buffer(&serial_msg);
-        if(msg) {
+        *msg = bc_msg_new_from_buffer(&serial_msg);
+        if(*msg) {
             #ifdef NET_DEBUG
                 printf("[in] <= ");
-                bc_msg_print(msg);
+                bc_msg_print(*msg);
             #endif
-            switch(msg->type) {
+            switch((*msg)->type) {
+                case BC_MSG_INV: break;
                 case BC_MSG_PING:
-                    handle_msg_ping(peer, (bc_msg_ping *) msg);
+                    handle_msg_ping(peer, (bc_msg_ping *) *msg);
                     break;
+                case BC_MSG_PONG: break;
+                case BC_MSG_SENDCMPCT: break;
                 case BC_MSG_VERACK:
                     handle_msg_verack(peer);
                     break;
                 case BC_MSG_VERSION:
-                    handle_msg_version(peer, (bc_msg_version *) msg);
+                    handle_msg_version(peer, (bc_msg_version *) *msg);
                     break;
             }
         }

@@ -203,7 +203,9 @@ void bc_msg_destroy(bc_msg *msg)
 void bc_msg_serialize(bc_msg *msg, serial_buffer *buf)
 {
     switch(msg->type) {
-    // TODO BC_MSG_INV
+    case BC_MSG_INV:
+        bc_msg_inv_serialize((bc_msg_inv *) msg, buf);
+        break;
     case BC_MSG_PING:
         bc_msg_ping_serialize((bc_msg_ping *) msg, buf);
         break;
@@ -264,6 +266,22 @@ void bc_msg_inv_destroy(bc_msg_inv *msg)
     }
     free(msg);
 }
+
+void bc_msg_inv_serialize(bc_msg_inv *msg, serial_buffer *buf)
+{
+    buf->size = MESSAGE_HEADER_LEN;
+    
+    serial_buffer_push_u64(buf, msg->count);
+    for(uint64_t i=0; i<msg->count; ++i) {
+        serial_buffer_push_u32(buf, msg->vec[i].type);
+        serial_buffer_push_mem(buf, msg->vec[i].hash, BC_SHA256_LEN);
+    }
+    
+    // Reset write head
+    buf->next = 0;
+    bc_proto_serialize_header(buf, "inv");
+}
+
 void bc_msg_inv_deserialize(bc_msg_inv *msg, serial_buffer *buf)
 {
     bc_proto_varint_deserialize(&msg->count, buf);

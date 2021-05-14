@@ -7,19 +7,19 @@
 // Uncomment to get debug output
 #define NET_DEBUG (1)
 
-// Comment this out for testnet
-#define MAINNET (1)
+// Comment this out for mainnet
+#define TESTNET (1)
 
 // Mainnet
-#ifdef MAINNET
+#ifdef TESTNET
+    #define BC_DEFAULT_PORT 18333
+    #define BC_MAGIC_NUM    0x0709110b
+    #define BC_DNS_SEED     "seed.tbtc.petertodd.org"
+#else
     #define BC_DEFAULT_PORT 8333
     #define BC_MAGIC_NUM    0xd9b4bef9
     #define BC_DNS_SEED     "seed.bitcoin.sipa.be"
     //#define BC_DNS_SEED     "seed.btc.petertodd.org"
-#else
-    #define BC_DEFAULT_PORT 18333
-    #define BC_MAGIC_NUM    0x0709110b
-    #define BC_DNS_SEED     "seed.tbtc.petertodd.org"
 #endif
 
 #endif

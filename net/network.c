@@ -17,9 +17,11 @@ void bc_network_destroy(bc_network *net)
 
 int bc_network_connect(bc_network *net)
 {
+    // TODO Get a list of ips to populate the peer list
     dns_record_a a_rec;
     dns_get_records_a(BC_DNS_SEED, &a_rec);
    
+    // TODO Make it sur that you can connect to testnet at runtime
     net->peer = bc_peer_new(a_rec.ip, BC_DEFAULT_PORT);
     
     if(bc_peer_connect(net->peer) < 0) {
