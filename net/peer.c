@@ -11,8 +11,8 @@
 bc_peer *bc_peer_new(uint32_t ip, uint16_t port)
 {
     bc_peer *peer = malloc(sizeof(bc_peer));
-    peer->ip = ip;
-    peer->port = port;
+    peer->addr.ip = ip;
+    peer->addr.port = port;
     return peer;
 }
 
@@ -31,8 +31,8 @@ static void handshake(bc_peer *peer)
         .dest = {
             .time = 0,
             .services = 1,
-            .ip = (uint64_t) peer->ip,
-            .port = peer->port
+            .ip = (uint64_t) peer->addr.ip,
+            .port = peer->addr.port
         },
         .src = {
             .time = 0,
@@ -51,7 +51,7 @@ static void handshake(bc_peer *peer)
 
 int bc_peer_connect(bc_peer *peer)
 {
-    bc_socket_init(&peer->socket, BC_SOCKET_TCP, peer->ip, peer->port);
+    bc_socket_init(&peer->socket, BC_SOCKET_TCP, peer->addr.ip, peer->addr.port);
     bc_socket_connect(&peer->socket);
     handshake(peer);
     return 0;

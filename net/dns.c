@@ -283,7 +283,7 @@ int dns_get_records_a(char *domain, dns_record_a **rec, size_t *len)
     *len = response.header.answer_count;
     *rec = malloc(sizeof(dns_record_a) * (*len));
     
-    for(int i=0; i<*len; ++i) {
+    for(size_t i=0; i<*len; ++i) {
         (*rec)[i].ttl = response.answers[i].ttl;
         (*rec)[i].ip = *((uint32_t *) response.answers[i].data);
     }

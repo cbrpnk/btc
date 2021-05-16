@@ -6,28 +6,43 @@
 bc_network *bc_network_new()
 {
     bc_network *net = malloc(sizeof(bc_network));
+    net->address_list = NULL;
+    net->address_list_len = 0;
     net->peer = NULL;
     return net;
 }
 
 void bc_network_destroy(bc_network *net)
 {
+    free(net->address_list);
     bc_peer_destroy(net->peer);
     free(net);
 }
 
-int bc_network_connect(bc_network *net)
+static void populate_peer_addr(bc_network *net)
 {
+    // TODO Make it sure that you can connect to testnet at runtime
+    
+    // TODO Try a list of bitcoin seeds
+    
     // Get a list of ips to populate the peer list
     dns_record_a *a_rec;
-    size_t len;
-    dns_get_records_a(BC_DNS_SEED, &a_rec, &len);
+    dns_get_records_a(BC_DNS_SEED, &a_rec, &net->address_list_len);
     
-    // TODO Make it sur that you can connect to testnet at runtime
-    net->peer = bc_peer_new(a_rec[0].ip, BC_DEFAULT_PORT);
+    // Populate address list
+    net->address_list = malloc(sizeof(bc_peer_addr) * net->address_list_len);
+    for(size_t i=0; i<net->address_list_len; ++i) {
+        net->address_list[i].ip = a_rec[i].ip;
+        net->address_list[i].port = BC_DEFAULT_PORT;
+    }
     
-    // TODO Free a recs
     free(a_rec);
+}
+
+int bc_network_connect(bc_network *net)
+{
+    populate_peer_addr(net);
+    net->peer = bc_peer_new(net->address_list[0].ip, net->address_list[0].port);
     
     if(bc_peer_connect(net->peer) < 0) {
         return -1;

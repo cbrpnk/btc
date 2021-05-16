@@ -6,9 +6,13 @@
 #include "socket.h"
 #include "proto.h"
 
-typedef struct bc_peer {
+typedef struct bc_peer_addr {
     uint32_t ip;
     uint16_t port;
+} bc_peer_addr;
+
+typedef struct bc_peer {
+    bc_peer_addr addr;
     bc_socket socket;
 } bc_peer;
 

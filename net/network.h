@@ -7,6 +7,11 @@
 
 // bc_network manages a bunch of peers
 typedef struct bc_network {
+    // Address list
+    bc_peer_addr *address_list;
+    size_t address_list_len;
+    
+    // Connected peers
     bc_peer *peer;
 } bc_network;
 
