@@ -67,6 +67,6 @@ typedef struct dns_record_a {
 
 int dns_query(dns_message *req, dns_message *res);
 int dns_get_records(char *domain, dns_record_type type, struct dns_message *response);
-int dns_get_records_a(char *domain, dns_record_a *rec);
+int dns_get_records_a(char *domain, dns_record_a **rec, size_t *len);
 
 #endif

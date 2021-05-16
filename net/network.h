@@ -6,9 +6,7 @@
 #include "peer.h"
 
 // bc_network manages a bunch of peers
-
 typedef struct bc_network {
-    // TODO address list
     bc_peer *peer;
 } bc_network;
 

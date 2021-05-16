@@ -275,12 +275,19 @@ int dns_get_records(char *domain, dns_record_type type,
     return 0;
 }
 
-int dns_get_records_a(char *domain, dns_record_a *rec)
+int dns_get_records_a(char *domain, dns_record_a **rec, size_t *len)
 {
     struct dns_message response;
     dns_get_records(domain, DNS_TYPE_A, &response);
-    rec->ttl = response.answers[0].ttl;
-    rec->ip = *((uint32_t *) response.answers[0].data);
+   
+    *len = response.header.answer_count;
+    *rec = malloc(sizeof(dns_record_a) * (*len));
+    
+    for(int i=0; i<*len; ++i) {
+        (*rec)[i].ttl = response.answers[i].ttl;
+        (*rec)[i].ip = *((uint32_t *) response.answers[i].data);
+    }
+    
     message_destroy(&response);
     return 0;
 }
