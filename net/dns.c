@@ -255,9 +255,13 @@ int dns_query(dns_message *req, dns_message *res)
     bc_socket_init(&sock, BC_SOCKET_UDP, DNS_SERVER_IP, DNS_SERVER_PORT);
     
     send_request(&sock, req);
+    printf("[out] => ");
+    dns_print(req);
     do {
         recv_response(&sock, res);
     } while(req->header.id != res->header.id);
+    printf("[in] <= ");
+    dns_print(res);
     
     bc_socket_destroy(&sock);
     return 0;
@@ -290,4 +294,49 @@ int dns_get_records_a(char *domain, dns_record_a **rec, size_t *len)
     
     message_destroy(&response);
     return 0;
+}
+
+void dns_print(dns_message *msg)
+{
+    printf("dns {\n");
+    
+    // Print Header
+    printf("\tid: %d,\n\tqr: %d,\n", msg->header.id, msg->header.qr);
+    printf("\topcode: %d,\n\taa: %d,\n", msg->header.opcode, msg->header.aa);
+    printf("\tts: %d,\n\trd: %d,\n", msg->header.tc, msg->header.rd);
+    printf("\tra: %d,\n\trcode: %d,\n", msg->header.ra, msg->header.rcode);
+    printf("\tquestion_count: %d,\n\tanswer_count: %d,\n",
+            msg->header.question_count, msg->header.answer_count);
+    printf("\tauthority_count: %d,\n\tadditional_count: %d,\n",
+            msg->header.authority_count, msg->header.additional_count);
+    
+    // Print Question
+    printf("\tquestions: [\n");
+    for(int i=0; i<msg->header.question_count; ++i) {
+        printf("\t\t{\n");
+        printf("\t\t\tdomain: %s,\n\t\t\ttype: %d,\n\t\t\tdns_class: %d\n",
+            msg->questions[i].domain, msg->questions[i].type,
+            msg->questions[i].dns_class);
+        printf("\t\t},\n");
+    }
+    printf("\t],\n");
+   
+    // Print Answers
+    printf("\tanswers: [\n");
+    for(int i=0; i<msg->header.answer_count; ++i) {
+        printf("\t\t{\n");
+        printf("\t\t\tdomain: %s,\n\t\t\ttype: %d,\n\t\t\tdns_class: %d\n",
+            msg->answers[i].domain, msg->answers[i].type,
+            msg->answers[i].dns_class);
+        printf("\t\t\tttl: %d\n\t\t\tlen: %d\n\t\t\tdata: %x\n",
+            msg->answers[i].ttl, msg->answers[i].len,
+            *((uint32_t *) msg->answers[i].data));
+        printf("\t\t},\n");
+    }
+    printf("\t],\n");
+    
+    // TODO Print Authority
+    // TODO Print Additional
+    
+    printf("}\n");
 }

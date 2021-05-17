@@ -56,8 +56,8 @@ typedef struct dns_message {
     struct dns_header    header;
     struct dns_question *questions;
     struct dns_answer   *answers;
-    // TODO Autorities section (not implemented)
-    // TODO additionals section (not implemented)
+    // TODO Authority section (not implemented)
+    // TODO additional section (not implemented)
 } dns_message;
 
 typedef struct dns_record_a {
@@ -68,5 +68,6 @@ typedef struct dns_record_a {
 int dns_query(dns_message *req, dns_message *res);
 int dns_get_records(char *domain, dns_record_type type, struct dns_message *response);
 int dns_get_records_a(char *domain, dns_record_a **rec, size_t *len);
+void dns_print(dns_message *msg);
 
 #endif
