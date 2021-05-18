@@ -2,11 +2,13 @@
 -[x] Have the dns system use bc_socket wrapper
 -[x] remove dependency to htons... family of functions
 -[x] Implement switch_endian32 and 64
--[ ] Investigate bug where we don't get the whole message
+-[x] Investigate bug where we don't get the whole message
 -[ ] Make a proto_send/proto_recv that accepts
 -[x] Remove debug, and add a to_string() for every message
 -[ ] Put node_main.txt and seed_dns.txt into config
--[ ] Have a to_string for dns messages
--[ ] Have a network type that manages nodes
+-[x] Have a to_string for dns messages
+-[x] Have a network type that manages nodes
 -[ ] Create a config struct that includes magic numbers and such
+-[x] Dns msg print domain on the question message is wrong
 -[ ] Make ips human readable up until it is used in sockets
+-[ ] Const stuff up

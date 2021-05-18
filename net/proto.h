@@ -13,7 +13,7 @@
 typedef struct bc_proto_net_addr {
     uint32_t time;      // Not present in version message
     uint64_t services;
-    uint64_t ip;        // IPVv4/v6
+    uint32_t ip;        // TODO Will not work for ipv6
     uint16_t port;
 } bc_proto_net_addr;
 

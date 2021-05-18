@@ -9,6 +9,8 @@ int main()
     
     while(1) {
         bc_msg *msg = NULL;
+        
+        // TODO Do a poll/select on the socket here 
         bc_network_recv(network, &msg);
         if(msg) {
             bc_msg_destroy(msg);

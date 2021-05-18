@@ -31,7 +31,7 @@ static void handshake(bc_peer *peer)
         .dest = {
             .time = 0,
             .services = 1,
-            .ip = (uint64_t) peer->addr.ip,
+            .ip = peer->addr.ip,
             .port = peer->addr.port
         },
         .src = {
@@ -45,6 +45,7 @@ static void handshake(bc_peer *peer)
         .start_height = 0,
         .relay = 1
     };
+    
     memcpy(msg.user_agent, BC_USER_AGENT, strlen(BC_USER_AGENT));
     bc_peer_send(peer, (bc_msg *) &msg);
 }

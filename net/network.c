@@ -21,7 +21,7 @@ void bc_network_destroy(bc_network *net)
 
 static void populate_peer_addr(bc_network *net)
 {
-    // TODO Make it sure that you can connect to testnet at runtime
+    // TODO Make it so that you can connect to testnet at runtime
     
     // TODO Try a list of bitcoin seeds
     
@@ -42,6 +42,9 @@ static void populate_peer_addr(bc_network *net)
 int bc_network_connect(bc_network *net)
 {
     populate_peer_addr(net);
+    
+    // Try to connect to a number of peers specified in the config file
+    
     net->peer = bc_peer_new(net->address_list[0].ip, net->address_list[0].port);
     
     if(bc_peer_connect(net->peer) < 0) {

@@ -111,13 +111,18 @@ static void dns_deserialize_flags(struct dns_message *mess, serial_buffer *buf)
 
 static void dns_serialize_label(serial_buffer *buf, char *domain)
 {
+    // Strtok modifies the original string so make a copy
+    char dom[256] = {0};    // 255 is the max length of a domain + \0
+    strncpy(dom, domain, 255);
+    char *domp = dom;   // We use a pointer so we can NULL it bellow
+    
     char *label;
-    while((label = strtok(domain, ".")) != NULL) {
+    while((label = strtok(domp, ".")) != NULL) {
         size_t len = strlen(label);
         serial_buffer_push_u8(buf, len);
         serial_buffer_push_mem(buf, label, len);
         // Required by strok so that it continues to work on the same string
-        domain = NULL;
+        domp = NULL;
     }
     // Zero-terminated string
     serial_buffer_push_u8(buf, 0);
@@ -257,6 +262,7 @@ int dns_query(dns_message *req, dns_message *res)
     send_request(&sock, req);
     printf("[out] => ");
     dns_print(req);
+    
     do {
         recv_response(&sock, res);
     } while(req->header.id != res->header.id);

@@ -124,7 +124,7 @@ void bc_proto_deserialize_header(serial_buffer *msg, bc_proto_header *header)
 
 void bc_proto_net_addr_print(bc_proto_net_addr *n)
 {
-    printf("{Time: %x, Services: %lx, Ip: %lx, Port: %hu}",
+    printf("{Time: %x, Services: %lx, Ip: %x, Port: %hu}",
             n->time, n->services, n->ip, n->port);
 }
 
