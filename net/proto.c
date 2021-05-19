@@ -84,7 +84,7 @@ static void deserialize_ipv4(uint32_t *ip, serial_buffer *buf)
     }
     
     // 4 IPv4 bytes
-    *ip = switch_endian_32(serial_buffer_pop_u32(buf));
+    *ip = serial_buffer_pop_u32(buf);
 }
 
 void bc_proto_serialize_header(serial_buffer *message, const char *cmd)
@@ -124,8 +124,8 @@ void bc_proto_deserialize_header(serial_buffer *msg, bc_proto_header *header)
 
 void bc_proto_net_addr_print(bc_proto_net_addr *n)
 {
-    printf("{Time: %x, Services: %lx, Ip: %x, Port: %hu}",
-            n->time, n->services, n->ip, n->port);
+    printf("{Time: %x, Services: %lx, Ip: %s, Port: %hu}",
+            n->time, n->services, inet_ntoa(*((struct in_addr *) &(n->ip))), n->port);
 }
 
 

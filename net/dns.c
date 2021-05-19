@@ -334,9 +334,9 @@ void dns_print(dns_message *msg)
         printf("\t\t\tdomain: %s,\n\t\t\ttype: %d,\n\t\t\tdns_class: %d\n",
             msg->answers[i].domain, msg->answers[i].type,
             msg->answers[i].dns_class);
-        printf("\t\t\tttl: %d\n\t\t\tlen: %d\n\t\t\tdata: %x\n",
+        printf("\t\t\tttl: %d\n\t\t\tlen: %d\n\t\t\tdata: %s\n",
             msg->answers[i].ttl, msg->answers[i].len,
-            *((uint32_t *) msg->answers[i].data));
+            inet_ntoa(*((struct in_addr *) msg->answers[i].data)));
         printf("\t\t},\n");
     }
     printf("\t],\n");

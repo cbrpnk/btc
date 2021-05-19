@@ -10,5 +10,5 @@
 -[x] Have a network type that manages nodes
 -[ ] Create a config struct that includes magic numbers and such
 -[x] Dns msg print domain on the question message is wrong
--[ ] Make ips human readable up until it is used in sockets
+-[x] Make ips human readable up until it is used in sockets
 -[ ] Const stuff up
