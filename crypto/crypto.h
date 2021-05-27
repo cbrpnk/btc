@@ -1,6 +1,8 @@
 #ifndef BITCOIN_CRYPTO_H
 #define BITCOIN_CRYPTO_H
 
+#include <stdint.h>
+
 #define BC_SHA256_LEN 32
 
 uint64_t gen_nonce_64();

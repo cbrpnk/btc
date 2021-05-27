@@ -1,9 +1,9 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
-#include <openssl/sha.h>
 
 #include "crypto.h"
+#include "sha256.h"
 
 uint64_t gen_nonce_64()
 {
@@ -21,14 +21,10 @@ uint64_t gen_nonce_16()
 uint32_t gen_checksum(unsigned char *buf, size_t len)
 {
     // The first 4 byte of a double sha256
-    unsigned char checksum[SHA256_DIGEST_LENGTH];
-    SHA256_CTX ctx;
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, buf, len);
-    SHA256_Final(checksum, &ctx);
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, checksum, SHA256_DIGEST_LENGTH);
-    SHA256_Final(checksum, &ctx);
-    return *((uint32_t *) checksum);
+    uint32_t checksum[8];
+    sha256_hash((uint8_t *) checksum, buf, len);
+    sha256_hash((uint8_t *) checksum, (uint8_t *) checksum, 32);
+    
+    return *((uint32_t *)checksum);
 }
 

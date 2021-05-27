@@ -12,6 +12,7 @@ inline static uint16_t switch_endian_16(uint16_t val)
     return (((val & 0xff) << 8) | ((val & 0xff00) >> 8));
 }
 
+/*
 static uint32_t switch_endian_32(uint32_t val)
 {
     return ((val & 0x000000ff) << 24)
@@ -20,7 +21,6 @@ static uint32_t switch_endian_32(uint32_t val)
          | ((val & 0xff000000) >> 24);
 }
 
-/*
 //
 // This function works but generate an unused warning 
 //
