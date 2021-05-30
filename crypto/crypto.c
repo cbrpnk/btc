@@ -18,13 +18,13 @@ uint64_t gen_nonce_16()
     return (uint16_t) rand();
 }
 
+// Returns the first 4 byte of a double sha256
 uint32_t gen_checksum(unsigned char *buf, size_t len)
 {
-    // The first 4 byte of a double sha256
-    uint32_t checksum[8];
-    sha256_hash((uint8_t *) checksum, buf, len);
-    sha256_hash((uint8_t *) checksum, (uint8_t *) checksum, 32);
+    uint8_t checksum[32];
+    sha256_hash(checksum, buf, len);
+    sha256_hash(checksum, (uint8_t *) checksum, 32);
     
-    return *((uint32_t *)checksum);
+    return *((uint32_t *) checksum);
 }
 

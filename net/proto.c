@@ -119,7 +119,7 @@ void bc_proto_deserialize_header(serial_buffer *msg, bc_proto_header *header)
     header->magic = serial_buffer_pop_u32(msg);
     serial_buffer_pop_mem(&header->command, 12, msg);
     header->payload_len = serial_buffer_pop_u32(msg);
-    header->checksum = serial_buffer_pop_u32(msg);  // TODO Verify checksum
+    header->checksum = serial_buffer_pop_u32(msg);
 }
 
 void bc_proto_net_addr_print(bc_proto_net_addr *n)
@@ -152,25 +152,32 @@ bc_msg *bc_msg_new_from_buffer(serial_buffer *buf)
     bc_msg *msg = NULL;
     bc_proto_header header;
     bc_proto_deserialize_header(buf, &header);
-    if(strcmp(header.command, "inv") == 0) {
-        msg = (bc_msg *) bc_msg_inv_new();
-        bc_msg_inv_deserialize((bc_msg_inv *) msg, buf);
-    } else if(strcmp(header.command, "ping") == 0) {
-        msg = (bc_msg *) bc_msg_ping_new();
-        bc_msg_ping_deserialize((bc_msg_ping *) msg, buf);
-    } else if(strcmp(header.command, "pong") == 0) {
-        msg = (bc_msg *) bc_msg_pong_new();
-        bc_msg_pong_deserialize((bc_msg_pong *) msg, buf);
-    } else if(strcmp(header.command, "sendcmpct") == 0) {
-        msg = (bc_msg *) bc_msg_sendcmpct_new();
-        bc_msg_sendcmpct_deserialize((bc_msg_sendcmpct *) msg, buf);
-    } else if(strcmp(header.command, "version") == 0) {
-        msg = (bc_msg *) bc_msg_version_new();
-        bc_msg_version_deserialize((bc_msg_version *) msg, buf);
-    } else if(strcmp(header.command, "verack") == 0) {
-        msg = (bc_msg *) bc_msg_verack_new();
-    } else {
-        printf("%s [TODO]\n", header.command);
+    
+    // Verify checksum
+    uint32_t checksum = gen_checksum(buf->data+MESSAGE_HEADER_LEN,
+                            header.payload_len);
+    
+    if(header.checksum == checksum) {
+        if(strcmp(header.command, "inv") == 0) {
+            msg = (bc_msg *) bc_msg_inv_new();
+            bc_msg_inv_deserialize((bc_msg_inv *) msg, buf);
+        } else if(strcmp(header.command, "ping") == 0) {
+            msg = (bc_msg *) bc_msg_ping_new();
+            bc_msg_ping_deserialize((bc_msg_ping *) msg, buf);
+        } else if(strcmp(header.command, "pong") == 0) {
+            msg = (bc_msg *) bc_msg_pong_new();
+            bc_msg_pong_deserialize((bc_msg_pong *) msg, buf);
+        } else if(strcmp(header.command, "sendcmpct") == 0) {
+            msg = (bc_msg *) bc_msg_sendcmpct_new();
+            bc_msg_sendcmpct_deserialize((bc_msg_sendcmpct *) msg, buf);
+        } else if(strcmp(header.command, "version") == 0) {
+            msg = (bc_msg *) bc_msg_version_new();
+            bc_msg_version_deserialize((bc_msg_version *) msg, buf);
+        } else if(strcmp(header.command, "verack") == 0) {
+            msg = (bc_msg *) bc_msg_verack_new();
+        } else {
+            printf("%s [TODO]\n", header.command);
+        }
     }
     
     return msg;
